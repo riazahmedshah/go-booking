@@ -21,9 +21,9 @@ func (payload *CreateUserPayload) Validate() error {
 }
 
 type ResponseUserDTO struct {
-	ID        string  `json:"id"`
-	FirstName string  `json:"firstName"`
-	LastName  *string `json:"lastName"`
-	Email     string  `json:"email"`
-	Role      string  `json:"role"`
+	ID        string  `json:"id" db:"id"`
+	FirstName string  `json:"firstName" db:"first_name"`
+	LastName  *string `json:"lastName" db:"last_name"`
+	Email     string  `json:"email" db:"email"`
+	Role      string  `json:"role" db:"role"`
 }

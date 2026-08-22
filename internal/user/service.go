@@ -18,8 +18,9 @@ type UserService struct {
 }
 
 var (
-	msgCreateUserFailed = "failed to create user"
-	msgLoginFailed      = "failed to login user"
+	msgCreateUserFailed     = "failed to create user"
+	msgLoginFailed          = "failed to login user"
+	msgGetCurrentUserFailed = "failed to get current user"
 )
 
 func NewUserService(server *server.Server, ur *UserRepository) *UserService {
@@ -69,4 +70,13 @@ func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string
 	}
 
 	return token, nil
+}
+
+func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*ResponseUserDTO, error) {
+	user, err := us.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, errs.New(http.StatusInternalServerError, msgGetCurrentUserFailed, err)
+	}
+
+	return user, nil
 }

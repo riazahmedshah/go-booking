@@ -55,3 +55,12 @@ func (uh *UserHandler) Login(c echo.Context) error {
 	c.SetCookie(cookie)
 	return c.JSON(http.StatusOK, echo.Map{"message": "logged in successful"})
 }
+
+func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
+	userID := c.Get("userID").(string)
+	user, err := uh.userService.GetCurrentUser(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, user)
+}

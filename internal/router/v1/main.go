@@ -8,7 +8,7 @@ import (
 
 func Registerv1Routes(router *echo.Group, h *handler.Handler, middlewares *middleware.Middlewares) {
 	// Register your v1 routes here
-	registerUserRoutes(router, h)
+	registerUserRoutes(router, h, middlewares)
 	registerPropertyRoutes(router, h, middlewares)
 	registerBookingRoutes(router, h, middlewares)
 }

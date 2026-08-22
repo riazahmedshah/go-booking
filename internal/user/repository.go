@@ -62,7 +62,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPay
 	return nil
 }
 
-func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*User, error) {
+func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*ResponseUserDTO, error) {
 	stmt := `
 		SELECT
 			id, first_name, last_name, email, role
@@ -70,8 +70,14 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*User
 		WHERE
 			id=@id
 	`
-	user, err := ur.getUser(ctx, stmt, pgx.NamedArgs{"id": userID})
+	rows, err := ur.server.DB.Query(ctx, stmt, pgx.NamedArgs{
+		"id": userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get user query: %w", err)
+	}
 
+	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[ResponseUserDTO])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrUserNotFound
@@ -79,7 +85,7 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*User
 		return nil, fmt.Errorf("failed to collect row from table:users for user with id=%s: %w", userID, err)
 	}
 
-	return user, nil
+	return &userItem, nil
 }
 
 func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
