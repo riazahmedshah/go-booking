@@ -44,7 +44,7 @@ func (bh *BookingHandler) ConfirmBooking(c echo.Context) error {
 	booking, err := bh.bookingService.ConfirmBooking(c.Request().Context(), idempotencyKey, userID)
 	if err != nil {
 		slog.Error("failed to confirm booking", "error", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+		return err
 	}
 
 	return c.JSON(200, booking)
