@@ -3,6 +3,7 @@ package notification
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -60,7 +61,12 @@ func (n *NotificationService) handleBookingCompletion(ctx context.Context, t *as
 	return nil
 }
 
-func (n *NotificationService) HandleSendOTP(email string, otp int) error {
+func (n *NotificationService) HandleSendOTP(email string, otp int64) error {
+	str := fmt.Sprint(otp)
+	if len(str) != 6 {
+		slog.Error("invalid otp length", "length", len(str), "otp", otp)
+		return errors.New("invalid otp length")
+	}
 	slog.Info("Sending OTP", "email", email)
 	return n.emailClient.SendOTP(email, otp)
 }

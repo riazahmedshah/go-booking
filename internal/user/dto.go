@@ -28,6 +28,11 @@ type ResponseUserDTO struct {
 	Role      string  `json:"role" db:"role"`
 }
 
-type sendOTPPayload struct {
+type SendOTPPayload struct {
 	Email string `json:"email" validate:"required,email"`
+}
+
+type VerifyOTPPayload struct {
+	Email string `json:"email" validate:"required,email"`
+	OTP   int64  `json:"otp" validate:"required"`
 }

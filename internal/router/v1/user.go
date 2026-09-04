@@ -8,7 +8,8 @@ import (
 
 func registerUserRoutes(r *echo.Group, h *handler.Handler, middlewares *middleware.Middlewares) {
 	auth := r.Group("/auth")
-	auth.POST("/otps", h.UserHandler.SendOTP)
+	auth.POST("/otp", h.UserHandler.SendOTP)
+	auth.POST("/otp/verify", h.UserHandler.VerifyOTP)
 	auth.POST("/register", h.UserHandler.CreateUser)
 	auth.POST("/login", h.UserHandler.Login)
 	auth.GET("/me", h.UserHandler.GetCurrentUser, middlewares.Auth.RequireAuth())

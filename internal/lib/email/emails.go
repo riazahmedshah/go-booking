@@ -15,6 +15,6 @@ func (c *SMTPClient) SendConfirmationEmail(to string, bookingID string, totalPri
 	return c.SendEmail(to, "Booking Confirmation", "success-booking", data)
 }
 
-func (c *SMTPClient) SendOTP(to string, otp int) error {
+func (c *SMTPClient) SendOTP(to string, otp int64) error {
 	return c.SendEmail(to, "OTP Verification", "send-otp", map[string]any{"OTP_CODE": otp})
 }

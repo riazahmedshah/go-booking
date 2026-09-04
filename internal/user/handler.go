@@ -22,16 +22,39 @@ func NewUserHandler(server *server.Server, us *UserService) *UserHandler {
 }
 
 func (uh *UserHandler) SendOTP(c echo.Context) error {
-	var payload sendOTPPayload
+	var payload SendOTPPayload
 	if err := c.Bind(&payload); err != nil {
 		slog.Error("invalid payload", "err", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
-	err := uh.userService.SendOTP(payload.Email)
+
+	if err := c.Validate(&payload); err != nil {
+		return err
+	}
+
+	err := uh.userService.SendOTP(c.Request().Context(), payload.Email)
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "otp send successfully"})
+}
+
+func (uh *UserHandler) VerifyOTP(c echo.Context) error {
+	var payload VerifyOTPPayload
+	if err := c.Bind(&payload); err != nil {
+		slog.Error("invalid payload", "err", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+	}
+
+	if err := c.Validate(&payload); err != nil {
+		return err
+	}
+
+	if err := uh.userService.VerifyOTP(c.Request().Context(), payload.Email, payload.OTP); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"message": "successfully verified"})
 }
 
 func (uh *UserHandler) CreateUser(c echo.Context) error {
@@ -50,6 +73,10 @@ func (uh *UserHandler) Login(c echo.Context) error {
 	var loginPayload LoginPayload
 	if err := c.Bind(&loginPayload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+	}
+
+	if err := c.Validate(&loginPayload); err != nil {
+		return err
 	}
 
 	token, err := uh.userService.Login(c.Request().Context(), &loginPayload)

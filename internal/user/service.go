@@ -2,10 +2,16 @@ package user
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"log/slog"
+	"math/big"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/rueidis"
 	"github.com/riazahmedshah/go-booking/internal/errs"
 	"github.com/riazahmedshah/go-booking/internal/lib/utils"
 	"github.com/riazahmedshah/go-booking/internal/notification"
@@ -23,6 +29,8 @@ var (
 	msgCreateUserFailed     = "failed to create user"
 	msgLoginFailed          = "failed to login user"
 	msgGetCurrentUserFailed = "failed to get current user"
+	msgSendOTPFailed        = "failed to send otp"
+	msgVerifyOTPFailed      = "failed to verify"
 )
 
 func NewUserService(server *server.Server, ur *UserRepository, n *notification.NotificationService) *UserService {
@@ -33,16 +41,51 @@ func NewUserService(server *server.Server, ur *UserRepository, n *notification.N
 	}
 }
 
-func (us *UserService) SendOTP(email string) error {
-	otp := 123456
-	return us.notification.HandleSendOTP(email, otp)
+func (us *UserService) SendOTP(ctx context.Context, email string) error {
+	max := big.NewInt(1000000)
+	otp, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		slog.Error("crypto/rand error")
+		errs.New(http.StatusInternalServerError, "server error", err)
+	}
+	// otp := 123456
+	if err := us.notification.HandleSendOTP(email, otp.Int64()); err != nil {
+		return errs.New(http.StatusInternalServerError, msgSendOTPFailed, err)
+	}
+
+	cmd := us.server.RedisClient.B().Set().Key(email).Value(otp.String()).Ex(5 * time.Minute).Build()
+	if err := us.server.RedisClient.Do(ctx, cmd).Error(); err != nil {
+		return errs.New(http.StatusInternalServerError, msgSendOTPFailed, err)
+	}
+	return nil
 }
 
-func (us *UserService) VerifyOTP(email string, otp int) error {
-	// Check Redis GET (email) : (otp)
-	// If Valid:
-	// 		- user exists? create/reuse session
-	// 		- user does not exists: Redis SET verified_email:{email} return 200
+func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) error {
+	cmd := us.server.RedisClient.B().Get().Key(email).Build()
+	otpStr, err := us.server.RedisClient.Do(ctx, cmd).ToString()
+	if err != nil {
+		if rueidis.IsRedisNil(err) {
+			return errs.New(http.StatusBadRequest, "otp expired or invalid", err)
+		}
+		return errs.New(http.StatusInternalServerError, "server error", err)
+	}
+
+	otpStored, err := strconv.ParseInt(otpStr, 10, 64)
+	if err != nil {
+		return errs.New(http.StatusBadRequest, "invalid otp format stored", err)
+	}
+
+	if otpStored != otp {
+		return errs.New(http.StatusBadRequest, "invalid otp", nil)
+	}
+
+	delCmd := us.server.RedisClient.B().Del().Key(email).Build()
+	_ = us.server.RedisClient.Do(ctx, delCmd)
+
+	cmdSet := us.server.RedisClient.B().Set().Key("is_verified").Value(email).Ex(time.Minute).Build()
+	if err := us.server.RedisClient.Do(ctx, cmdSet).Error(); err != nil {
+		return errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
+	}
 	return nil
 }
 
