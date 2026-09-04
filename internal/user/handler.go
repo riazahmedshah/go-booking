@@ -1,6 +1,7 @@
 package user
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -18,6 +19,19 @@ func NewUserHandler(server *server.Server, us *UserService) *UserHandler {
 		server:      server,
 		userService: us,
 	}
+}
+
+func (uh *UserHandler) SendOTP(c echo.Context) error {
+	var payload sendOTPPayload
+	if err := c.Bind(&payload); err != nil {
+		slog.Error("invalid payload", "err", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+	}
+	err := uh.userService.SendOTP(payload.Email)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, echo.Map{"message": "otp send successfully"})
 }
 
 func (uh *UserHandler) CreateUser(c echo.Context) error {

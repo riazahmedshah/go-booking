@@ -59,3 +59,8 @@ func (n *NotificationService) handleBookingCompletion(ctx context.Context, t *as
 	slog.Info("Booking completion email sent successfully", "booking_id", p.BookingID, "userEmail", userEmail)
 	return nil
 }
+
+func (n *NotificationService) HandleSendOTP(email string, otp int) error {
+	slog.Info("Sending OTP", "email", email)
+	return n.emailClient.SendOTP(email, otp)
+}

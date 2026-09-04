@@ -16,7 +16,7 @@ type Service struct {
 }
 
 func NewService(server *server.Server, repository *repository.Repositories, noti *notification.NotificationService) (*Service, error) {
-	userService := user.NewUserService(server, repository.UserRepository)
+	userService := user.NewUserService(server, repository.UserRepository, noti)
 	propertyService := property.NewPropertyService(server, repository.PropertyRepository)
 	bookingService := booking.NewBookingService(server, repository.BookingRepository, noti)
 	return &Service{

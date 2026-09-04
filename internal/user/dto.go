@@ -27,3 +27,7 @@ type ResponseUserDTO struct {
 	Email     string  `json:"email" db:"email"`
 	Role      string  `json:"role" db:"role"`
 }
+
+type sendOTPPayload struct {
+	Email string `json:"email" validate:"required,email"`
+}

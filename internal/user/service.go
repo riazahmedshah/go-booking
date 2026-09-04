@@ -8,13 +8,15 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/go-booking/internal/errs"
 	"github.com/riazahmedshah/go-booking/internal/lib/utils"
+	"github.com/riazahmedshah/go-booking/internal/notification"
 	"github.com/riazahmedshah/go-booking/internal/server"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	server   *server.Server
-	userRepo *UserRepository
+	server       *server.Server
+	userRepo     *UserRepository
+	notification *notification.NotificationService
 }
 
 var (
@@ -23,11 +25,33 @@ var (
 	msgGetCurrentUserFailed = "failed to get current user"
 )
 
-func NewUserService(server *server.Server, ur *UserRepository) *UserService {
+func NewUserService(server *server.Server, ur *UserRepository, n *notification.NotificationService) *UserService {
 	return &UserService{
-		server:   server,
-		userRepo: ur,
+		server:       server,
+		userRepo:     ur,
+		notification: n,
 	}
+}
+
+func (us *UserService) SendOTP(email string) error {
+	otp := 123456
+	return us.notification.HandleSendOTP(email, otp)
+}
+
+func (us *UserService) VerifyOTP(email string, otp int) error {
+	// Check Redis GET (email) : (otp)
+	// If Valid:
+	// 		- user exists? create/reuse session
+	// 		- user does not exists: Redis SET verified_email:{email} return 200
+	return nil
+}
+
+func (us *UserService) Register(email, name string) error {
+	// Register a user
+	// Redis GET verified_email:{email}
+	// 		- missing: 403 "please verify email first"
+	// 		- present? create user row, Redis DEL verified_email:{email}, create session, 201
+	return nil
 }
 
 func (us *UserService) CreateUser(ctx context.Context, payload *CreateUserPayload) error {
