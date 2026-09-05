@@ -21,19 +21,19 @@ func NewUserRepository(server *server.Server) *UserRepository {
 	}
 }
 
-func (ur *UserRepository) getUser(ctx context.Context, query string, args pgx.NamedArgs) (*User, error) {
-	rows, err := ur.server.DB.Query(ctx, query, args)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute get user query: %w", err)
-	}
-	defer rows.Close()
+// func (ur *UserRepository) getUser(ctx context.Context, query string, args pgx.NamedArgs) (*User, error) {
+// 	rows, err := ur.server.DB.Query(ctx, query, args)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to execute get user query: %w", err)
+// 	}
+// 	defer rows.Close()
 
-	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
-	if err != nil {
-		return nil, err
-	}
-	return &userItem, nil
-}
+// 	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &userItem, nil
+// }
 
 func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPayload) (*User, error) {
 	stmt := `
@@ -97,21 +97,26 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*Resp
 func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	stmt := `
 		SELECT
-			id, first_name, last_name, email, password, role
+			id, first_name, last_name, email, role, password
 		FROM users
 		WHERE 
 			email=@email
 	`
+	rows, err := ur.server.DB.Query(ctx, stmt, pgx.NamedArgs{
+		"email": email,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get user query: %w", err)
+	}
 
-	user, err := ur.getUser(ctx, stmt, pgx.NamedArgs{"email": email})
+	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to collect row from table:users for user with email=%s: %w", email, err)
 	}
-
-	return user, nil
+	return &userItem, nil
 }
 
 func (ur *UserRepository) GetUserEmail(ctx context.Context, userID string) (string, error) {

@@ -1,13 +1,14 @@
 package middleware
 
 import (
+	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/riazahmedshah/go-booking/internal/server"
-
-	echojwt "github.com/labstack/echo-jwt/v4"
+	"github.com/riazahmedshah/go-booking/internal/user"
 )
 
 const (
@@ -24,38 +25,67 @@ func NewAuthMiddleware(server *server.Server) *AuthMiddleware {
 }
 
 func (auth *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
-	jwtMiddleware := echojwt.WithConfig(echojwt.Config{
-		SigningKey:  []byte(auth.server.Config.JWT.SecretKey),
-		TokenLookup: "cookie:access_token",
-	})
-
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-	
-		return jwtMiddleware(func(c echo.Context) error {
-			token, ok := c.Get("user").(*jwt.Token)
-			if !ok || token == nil {
+		return func(c echo.Context) error {
+			cookie, err := c.Cookie("sid")
+			if err != nil {
+				if err == http.ErrNoCookie {
+					slog.Error("cookie not found")
+					return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+				}
+				return echo.NewHTTPError(http.StatusBadRequest, "bad request")
+			}
+
+			sessionID := cookie.Value
+
+			cmd := auth.server.RedisClient.B().Get().Key("session:" + sessionID).Build()
+			res, err := auth.server.RedisClient.Do(c.Request().Context(), cmd).AsBytes()
+			if err != nil {
+				slog.Error("error occurred while fetching session data", "error", err)
 				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
 			}
 
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				return echo.NewHTTPError(http.StatusUnauthorized, "invalid token claims")
+			var sessionData user.SessionData
+			if err := json.Unmarshal(res, &sessionData); err != nil {
+				slog.Error("error occurred while unmarshalling session data", "error", err)
+				return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
 			}
 
-			userID, _ := claims["userId"].(string)
-			role, _ := claims["role"].(string)
-
-			c.Set(UserIDKey, userID)
-			c.Set(RoleKey, role)
+			c.Set(UserIDKey, sessionData.UserID)
+			c.Set(RoleKey, sessionData.Role)
 
 			return next(c)
-		})
+		}
 	}
+
+	// return func(next echo.HandlerFunc) echo.HandlerFunc {
+
+	// 	return jwtMiddleware(func(c echo.Context) error {
+	// 		token, ok := c.Get("user").(*jwt.Token)
+	// 		if !ok || token == nil {
+	// 			return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+	// 		}
+
+	// 		claims, ok := token.Claims.(jwt.MapClaims)
+	// 		if !ok {
+	// 			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token claims")
+	// 		}
+
+	// 		userID, _ := claims["userId"].(string)
+	// 		role, _ := claims["role"].(string)
+
+	// 		c.Set(UserIDKey, userID)
+	// 		c.Set(RoleKey, role)
+
+	// 		return next(c)
+	// 	})
+	// }
 }
 
 func (auth *AuthMiddleware) RequireRole(roles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			slog.Info("checking user role")
 			token, ok := c.Get("user").(*jwt.Token)
 			if !ok || token == nil {
 				return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid token")

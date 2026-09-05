@@ -36,8 +36,8 @@ type VerifyOTPPayload struct {
 }
 
 type VerifyOTPResult struct {
-	UserExists bool
-	Email      string
+	UserExists bool   `json:"userExists"`
+	Email      string `json:"email"`
 }
 
 type SessionData struct {

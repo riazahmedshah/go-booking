@@ -27,8 +27,8 @@ type UserService struct {
 }
 
 var (
-	msgCreateUserFailed     = "failed to create user"
-	msgLoginFailed          = "failed to login user"
+	msgCreateUserFailed = "failed to create user"
+	// msgLoginFailed          = "failed to login user"
 	msgGetCurrentUserFailed = "failed to get current user"
 	msgSendOTPFailed        = "failed to send otp"
 	msgVerifyOTPFailed      = "failed to verify"
@@ -86,7 +86,7 @@ func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) (
 	}
 
 	_, err = us.userRepo.GetUserByEmail(ctx, email)
-	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+	if err != nil {
 		if errors.Is(err, errs.ErrUserNotFound) {
 			// user does not exists
 			return &VerifyOTPResult{
@@ -157,7 +157,7 @@ func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string
 			return "", errs.ErrUserNotFound
 		}
 
-		return "", errs.New(http.StatusInternalServerError, msgLoginFailed, err)
+		return "", errs.New(http.StatusInternalServerError, "kya error yaha se aa raha hai??", err)
 	}
 
 	sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
