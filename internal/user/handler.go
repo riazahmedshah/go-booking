@@ -50,11 +50,15 @@ func (uh *UserHandler) VerifyOTP(c echo.Context) error {
 		return err
 	}
 
-	if err := uh.userService.VerifyOTP(c.Request().Context(), payload.Email, payload.OTP); err != nil {
+	result, err := uh.userService.VerifyOTP(c.Request().Context(), payload.Email, payload.OTP)
+	if err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{"message": "successfully verified"})
+	return c.JSON(http.StatusOK, echo.Map{
+		"message": "success",
+		"data":    result,
+	})
 }
 
 func (uh *UserHandler) CreateUser(c echo.Context) error {
@@ -62,10 +66,22 @@ func (uh *UserHandler) CreateUser(c echo.Context) error {
 	if err := c.Bind(&userPayload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
-	err := uh.userService.CreateUser(c.Request().Context(), &userPayload)
+	sid, err := uh.userService.Register(c.Request().Context(), &userPayload)
 	if err != nil {
 		return err
 	}
+
+	cookie := new(http.Cookie)
+	cookie.Name = "sid"
+	cookie.Value = sid
+	cookie.Expires = time.Now().Add(time.Hour * 24)
+	cookie.HttpOnly = true
+	cookie.Secure = false // Ensures cookie is only sent over HTTPS (Set to false ONLY in local dev if not using HTTPS)
+	cookie.SameSite = http.SameSiteLaxMode
+	cookie.Path = "/"
+
+	c.SetCookie(cookie)
+
 	return c.JSON(http.StatusCreated, map[string]string{"message": "user created successfully"})
 }
 
@@ -79,14 +95,14 @@ func (uh *UserHandler) Login(c echo.Context) error {
 		return err
 	}
 
-	token, err := uh.userService.Login(c.Request().Context(), &loginPayload)
+	sid, err := uh.userService.Login(c.Request().Context(), &loginPayload)
 	if err != nil {
 		return err
 	}
 
 	cookie := new(http.Cookie)
-	cookie.Name = "access_token"
-	cookie.Value = token
+	cookie.Name = "sid"
+	cookie.Value = sid
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.Secure = false // Ensures cookie is only sent over HTTPS (Set to false ONLY in local dev if not using HTTPS)

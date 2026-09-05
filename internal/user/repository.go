@@ -35,31 +35,37 @@ func (ur *UserRepository) getUser(ctx context.Context, query string, args pgx.Na
 	return &userItem, nil
 }
 
-func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPayload) error {
+func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPayload) (*User, error) {
 	stmt := `
 		INSERT INTO users(
-			first_name, last_name, email, password
+			first_name, last_name, email
 		) 
 		VALUES(
-			@first_name, @last_name, @email, @password
+			@first_name, @last_name, @email
 		)
+		RETURNING *
 	`
-	_, err := ur.server.DB.Exec(ctx, stmt, pgx.NamedArgs{
+	rows, err := ur.server.DB.Query(ctx, stmt, pgx.NamedArgs{
 		"first_name": payload.FirstName,
 		"last_name":  payload.LastName,
 		"email":      payload.Email,
-		"password":   payload.Password,
 	})
 
 	if err != nil {
+		return nil, fmt.Errorf("failed to execute create user query: %w", err)
+	}
+	defer rows.Close()
+
+	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
+	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return errs.ErrDuplicateEmail
+			return nil, errs.ErrDuplicateEmail
 		}
-		return fmt.Errorf("failed to execute create user query for email=%s: %w", payload.Email, err)
+		return nil, fmt.Errorf("failed to execute create user query for email=%s: %w", payload.Email, err)
 	}
 
-	return nil
+	return &userItem, nil
 }
 
 func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*ResponseUserDTO, error) {

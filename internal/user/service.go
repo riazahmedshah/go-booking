@@ -3,20 +3,21 @@ package user
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/rueidis"
 	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/lib/utils"
 	"github.com/riazahmedshah/go-booking/internal/notification"
 	"github.com/riazahmedshah/go-booking/internal/server"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -60,62 +61,96 @@ func (us *UserService) SendOTP(ctx context.Context, email string) error {
 	return nil
 }
 
-func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) error {
-	cmd := us.server.RedisClient.B().Get().Key(email).Build()
+func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) (*VerifyOTPResult, error) {
+	cmd := us.server.RedisClient.B().Getdel().Key(email).Build()
 	otpStr, err := us.server.RedisClient.Do(ctx, cmd).ToString()
 	if err != nil {
 		if rueidis.IsRedisNil(err) {
-			return errs.New(http.StatusBadRequest, "otp expired or invalid", err)
+			return nil, errs.New(http.StatusBadRequest, "otp expired or invalid", err)
 		}
-		return errs.New(http.StatusInternalServerError, "server error", err)
+		return nil, errs.New(http.StatusInternalServerError, "server error", err)
 	}
 
 	otpStored, err := strconv.ParseInt(otpStr, 10, 64)
 	if err != nil {
-		return errs.New(http.StatusBadRequest, "invalid otp format stored", err)
+		return nil, errs.New(http.StatusBadRequest, "invalid otp format stored", err)
 	}
 
 	if otpStored != otp {
-		return errs.New(http.StatusBadRequest, "invalid otp", nil)
+		return nil, errs.New(http.StatusBadRequest, "invalid otp", nil)
 	}
 
-	delCmd := us.server.RedisClient.B().Del().Key(email).Build()
-	_ = us.server.RedisClient.Do(ctx, delCmd)
-
-	cmdSet := us.server.RedisClient.B().Set().Key("is_verified").Value(email).Ex(time.Minute).Build()
+	cmdSet := us.server.RedisClient.B().Set().Key("is_verified:" + email).Value("1").Ex(5 * time.Minute).Build()
 	if err := us.server.RedisClient.Do(ctx, cmdSet).Error(); err != nil {
-		return errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
-	}
-	return nil
-}
-
-func (us *UserService) Register(email, name string) error {
-	// Register a user
-	// Redis GET verified_email:{email}
-	// 		- missing: 403 "please verify email first"
-	// 		- present? create user row, Redis DEL verified_email:{email}, create session, 201
-	return nil
-}
-
-func (us *UserService) CreateUser(ctx context.Context, payload *CreateUserPayload) error {
-	user, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
-	if err == nil && user != nil {
-		return errs.ErrDuplicateEmail
+		return nil, errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 10)
+	_, err = us.userRepo.GetUserByEmail(ctx, email)
+	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			// user does not exists
+			return &VerifyOTPResult{
+				UserExists: false,
+				Email:      email,
+			}, nil
+		}
+		return nil, errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
+	}
+	// user exists
+	return &VerifyOTPResult{
+		UserExists: true,
+		Email:      email,
+	}, nil
+}
+
+func (us *UserService) Register(ctx context.Context, payload *CreateUserPayload) (string, error) {
+	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
+	err := us.server.RedisClient.Do(ctx, cmd).Error()
 	if err != nil {
-		return errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+		if rueidis.IsRedisNil(err) {
+			return "", errs.New(http.StatusBadRequest, "please veryfy email first", err)
+		}
+		return "", errs.New(http.StatusInternalServerError, "server error register", err)
+	}
+	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
+	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+		return "", errs.New(http.StatusInternalServerError, "server error register get user", err)
 	}
 
-	payload.Password = string(hash)
-	if err := us.userRepo.CreateUser(ctx, payload); err != nil {
-		return errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	if exixtingUser != nil {
+		sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
+		if err != nil {
+			return "", errs.New(http.StatusInternalServerError, "server error session register", err)
+		}
+		return sessionId, nil
 	}
-	return nil
+
+	user, err := us.userRepo.CreateUser(ctx, payload)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, "server error session register", err)
+	}
+
+	return sessionId, nil
 }
 
 func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string, error) {
+
+	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
+	err := us.server.RedisClient.Do(ctx, cmd).Error()
+	if err != nil {
+		if rueidis.IsRedisNil(err) {
+			return "", errs.New(http.StatusBadRequest, "please veryfy email first", err)
+		}
+		return "", errs.New(http.StatusInternalServerError, "server error login", err)
+	}
+
+	// just key exists
+
 	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -125,18 +160,12 @@ func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string
 		return "", errs.New(http.StatusInternalServerError, msgLoginFailed, err)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(exixtingUser.Password), []byte(payload.Password))
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
 	if err != nil {
-		return "", errs.ErrInvalidPassword
+		return "", errs.New(http.StatusInternalServerError, "server session login error", err)
 	}
 
-	token, err := utils.GenerateJWTToken(exixtingUser.ID, exixtingUser.Role, []byte(us.server.Config.JWT.SecretKey))
-	if err != nil {
-
-		return "", errs.New(http.StatusInternalServerError, msgLoginFailed, err)
-	}
-
-	return token, nil
+	return sessionId, nil
 }
 
 func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*ResponseUserDTO, error) {
@@ -146,4 +175,28 @@ func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*Resp
 	}
 
 	return user, nil
+}
+
+func CreateSession(ctx context.Context, client rueidis.Client, userID, role string) (string, error) {
+	sid := strings.ToLower(rand.Text())
+
+	// JSON payload
+	payload, err := json.Marshal(SessionData{
+		UserID: userID,
+		Role:   role,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal session data: %w", err)
+	}
+
+	// 3. Store in Redis under "session:<sid>"
+	key := "session:" + sid
+	ttl := time.Hour
+	cmd := client.B().Set().Key(key).Value(string(payload)).Ex(ttl).Build()
+
+	if err := client.Do(ctx, cmd).Error(); err != nil {
+		return "", fmt.Errorf("failed to save session to redis: %w", err)
+	}
+
+	return sid, nil
 }

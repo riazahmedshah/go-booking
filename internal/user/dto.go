@@ -6,13 +6,11 @@ type CreateUserPayload struct {
 	FirstName string  `json:"firstName" validate:"required,max=255"`
 	LastName  *string `json:"lastName" validate:"omitempty,max=255"`
 	Email     string  `json:"email" validate:"required,email"`
-	Password  string  `json:"password" validate:"required,min=6,max=20"`
 	Role      *string `json:"role" validate:"omitempty,oneof=user host"`
 }
 
 type LoginPayload struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6,max=20"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 func (payload *CreateUserPayload) Validate() error {
@@ -35,4 +33,14 @@ type SendOTPPayload struct {
 type VerifyOTPPayload struct {
 	Email string `json:"email" validate:"required,email"`
 	OTP   int64  `json:"otp" validate:"required"`
+}
+
+type VerifyOTPResult struct {
+	UserExists bool
+	Email      string
+}
+
+type SessionData struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
 }
