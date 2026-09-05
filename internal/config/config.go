@@ -16,6 +16,7 @@ type Config struct {
 	Redis       RedisConfig       `validate:"required"`
 	Integration IntegrationConfig `validate:"required"`
 	JWT         JWTConfig         `validate:"required"`
+	OAuth       OAuthConfig       `validate:"required"`
 }
 
 type ServerConfig struct {
@@ -44,6 +45,12 @@ type IntegrationConfig struct {
 
 type JWTConfig struct {
 	SecretKey string `validate:"required"`
+}
+
+type OAuthConfig struct {
+	GoogleClientID     string `validate:"required"`
+	GoogleClientSecret string `validate:"required"`
+	GoogleRedirectURL  string `validate:"required"`
 }
 
 func getEnv(key, fallback string) string {
@@ -93,6 +100,11 @@ func LoadConfig() (*Config, error) {
 		},
 		JWT: JWTConfig{
 			SecretKey: getEnv("JWT_SECRET_KEY", ""),
+		},
+		OAuth: OAuthConfig{
+			GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+			GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+			GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
 		},
 	}
 

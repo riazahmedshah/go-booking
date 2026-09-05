@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"github.com/riazahmedshah/go-booking/internal/errs"
 	"github.com/riazahmedshah/go-booking/internal/notification"
 	"github.com/riazahmedshah/go-booking/internal/server"
+	"google.golang.org/api/idtoken"
 )
 
 type UserService struct {
@@ -175,6 +178,63 @@ func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*Resp
 	}
 
 	return user, nil
+}
+
+func (us *UserService) LoginWithGoogle(ctx context.Context, code string) (string, error) {
+	data := url.Values{
+		"code":          {code},
+		"client_id":     {us.server.Config.OAuth.GoogleClientID},
+		"client_secret": {us.server.Config.OAuth.GoogleClientSecret},
+		"redirect_uri":  {us.server.Config.OAuth.GoogleRedirectURL},
+		"grant_type":    {"authorization_code"},
+	}
+
+	res, err := http.PostForm("https://oauth2.googleapis.com/token", data)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, "login with google post err", err)
+	}
+	defer res.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(res.Body)
+
+	var tokenResp GoogleTokenResponse
+	if err := json.Unmarshal(bodyBytes, &tokenResp); err != nil {
+		return "", errs.New(http.StatusInternalServerError, "failed to parse token response", err)
+	}
+
+	payload, err := idtoken.Validate(ctx, tokenResp.IDToken, us.server.Config.OAuth.GoogleClientID)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, "failed to validate google id token", err)
+	}
+
+	firstName := payload.Claims["given_name"].(string)
+	lastName := payload.Claims["family_name"].(string)
+	email := payload.Claims["email"].(string)
+	isVerified := payload.Claims["email_verified"].(bool)
+
+	user, err := us.userRepo.GetUserByEmail(ctx, email)
+	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+		return "", errs.New(http.StatusInternalServerError, "failed to get user by email", err)
+	}
+
+	if errors.Is(err, errs.ErrUserNotFound) {
+		userPayload := &CreateUserPayload{
+			FirstName:  firstName,
+			LastName:   &lastName,
+			Email:      email,
+			IsVerified: &isVerified,
+		}
+
+		user, err = us.userRepo.CreateUser(ctx, userPayload)
+		if err != nil {
+			return "", errs.New(http.StatusInternalServerError, "failed to create user from google login", err)
+		}
+	}
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, "failed to create session for existing user", err)
+	}
+	return sessionId, nil
 }
 
 func CreateSession(ctx context.Context, client rueidis.Client, userID, role string) (string, error) {

@@ -21,34 +21,21 @@ func NewUserRepository(server *server.Server) *UserRepository {
 	}
 }
 
-// func (ur *UserRepository) getUser(ctx context.Context, query string, args pgx.NamedArgs) (*User, error) {
-// 	rows, err := ur.server.DB.Query(ctx, query, args)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to execute get user query: %w", err)
-// 	}
-// 	defer rows.Close()
-
-// 	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[User])
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &userItem, nil
-// }
-
 func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPayload) (*User, error) {
 	stmt := `
 		INSERT INTO users(
-			first_name, last_name, email
+			first_name, last_name, email, is_verified
 		) 
 		VALUES(
-			@first_name, @last_name, @email
+			@first_name, @last_name, @email, @is_verified
 		)
 		RETURNING *
 	`
 	rows, err := ur.server.DB.Query(ctx, stmt, pgx.NamedArgs{
-		"first_name": payload.FirstName,
-		"last_name":  payload.LastName,
-		"email":      payload.Email,
+		"first_name":  payload.FirstName,
+		"last_name":   payload.LastName,
+		"email":       payload.Email,
+		"is_verified": payload.IsVerified,
 	})
 
 	if err != nil {
@@ -71,7 +58,7 @@ func (ur *UserRepository) CreateUser(ctx context.Context, payload *CreateUserPay
 func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*ResponseUserDTO, error) {
 	stmt := `
 		SELECT
-			id, first_name, last_name, email, role
+			id, first_name, last_name, email, role, is_verified
 		FROM users
 		WHERE
 			id=@id
@@ -97,7 +84,7 @@ func (ur *UserRepository) GetUserByID(ctx context.Context, userID string) (*Resp
 func (ur *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	stmt := `
 		SELECT
-			id, first_name, last_name, email, role, password
+			id, first_name, last_name, email, role, password, is_verified
 		FROM users
 		WHERE 
 			email=@email

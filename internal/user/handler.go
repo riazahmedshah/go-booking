@@ -113,6 +113,31 @@ func (uh *UserHandler) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"message": "logged in successful"})
 }
 
+func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
+	code := c.QueryParam("code")
+	if code == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "missing authorization code query parameter",
+		})
+	}
+	sid, err := uh.userService.LoginWithGoogle(c.Request().Context(), code)
+	if err != nil {
+		return err
+	}
+
+	cookie := new(http.Cookie)
+	cookie.Name = "sid"
+	cookie.Value = sid
+	cookie.Expires = time.Now().Add(time.Hour * 24)
+	cookie.HttpOnly = true
+	cookie.Secure = false // Ensures cookie is only sent over HTTPS (Set to false ONLY in local dev if not using HTTPS)
+	cookie.SameSite = http.SameSiteLaxMode
+	cookie.Path = "/"
+
+	c.SetCookie(cookie)
+	return c.JSON(http.StatusOK, echo.Map{"message": "logged in with google successfully"})
+}
+
 func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
 	userID := c.Get("userID").(string)
 	user, err := uh.userService.GetCurrentUser(c.Request().Context(), userID)
