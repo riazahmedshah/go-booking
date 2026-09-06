@@ -1,6 +1,7 @@
 package gcs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -27,10 +28,10 @@ func NewGCSClient(cfg *config.Config) (*GCSClient, error) {
 	}, nil
 }
 
-func (g *GCSClient) UploadFile(ctx context.Context, objectName string, reader io.Reader) error {
+func (g *GCSClient) UploadFile(ctx context.Context, objectName string, reader []byte) error {
 	wc := g.client.Bucket(g.cfg.GCS.GCSBucketName).Object(objectName).NewWriter(ctx)
 
-	if _, err := io.Copy(wc, reader); err != nil {
+	if _, err := io.Copy(wc, bytes.NewReader(reader)); err != nil {
 		return fmt.Errorf("failed to copy data: %w", err)
 	}
 

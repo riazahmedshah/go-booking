@@ -23,11 +23,21 @@ func (ph *PropertyHandler) CreateProperty(c echo.Context) error {
 	userID, _ := c.Get("userID").(string)
 	var payload CreatePropertyAndAddressPayload
 
+	const maxPayloadSize = (20 << 20) + (10 << 10)
+	c.Request().Body = http.MaxBytesReader(c.Response().Writer, c.Request().Body, maxPayloadSize)
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "failed to parse multipart form")
+	}
+
+	files := form.File["images"]
+
 	if err := c.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
 
-	property, err := ph.propertyService.CreateProperty(c.Request().Context(), userID, &payload)
+	property, err := ph.propertyService.CreateProperty(c.Request().Context(), files, userID, &payload)
 	if err != nil {
 		return err
 	}

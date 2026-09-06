@@ -20,4 +20,15 @@ var (
 		"invalid update fields",
 		nil,
 	)
+
+	ErrImageNotFound = New(
+		http.StatusNotFound,
+		"image not found",
+		nil,
+	)
+	ErrInvalidImageStatus = New(
+		http.StatusBadRequest,
+		"invalid image status",
+		nil,
+	)
 )

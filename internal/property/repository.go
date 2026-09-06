@@ -23,10 +23,10 @@ func NewPropertyRepository(server *server.Server) *PropertyRepository {
 func (pr *PropertyRepository) Createproperty(ctx context.Context, tx pgx.Tx, hostID string, payload *CreatePropertyPayload) (*Property, error) {
 	stmt := `
 		INSERT INTO properties(
-			host_id, title, sub_title, max_guests, price, images
+			host_id, title, sub_title, max_guests, price
 		)
 		VALUES (
-			@host_id, @title, @sub_title, @max_guests, @price, @images
+			@host_id, @title, @sub_title, @max_guests, @price
 		)
 		RETURNING *
 	`
@@ -37,7 +37,6 @@ func (pr *PropertyRepository) Createproperty(ctx context.Context, tx pgx.Tx, hos
 		"sub_title":  payload.SubTitle,
 		"max_guests": payload.MaxGuests,
 		"price":      payload.Price,
-		"images":     payload.ImageURLs,
 	})
 
 	if err != nil {
@@ -87,10 +86,56 @@ func (pr *PropertyRepository) CreateAddress(ctx context.Context, tx pgx.Tx, payl
 	return &address, nil
 }
 
+func (pr *PropertyRepository) CreatePropertyImages(ctx context.Context, tx pgx.Tx, propertyID string, keys []string) ([]*PropertyImages, error) {
+	stmt := `
+		INSERT INTO property_images (property_id, key)
+		SELECT @property_id, unnest(@key::text[])
+		RETURNING *
+	`
+
+	rows, err := tx.Query(ctx, stmt, pgx.NamedArgs{
+		"property_id": propertyID,
+		"key":         keys,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute create property images query: %w", err)
+	}
+	defer rows.Close()
+
+	images, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[PropertyImages])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect rows from table:property_images: %w", err)
+	}
+
+	return images, nil
+}
+
+func (pr *PropertyRepository) UpdateImageStatus(ctx context.Context, imageID string, status string) error {
+	stmt := `
+		UPDATE property_images
+		SET status = @status
+		WHERE id = @id
+	`
+
+	result, err := pr.server.DB.Exec(ctx, stmt, pgx.NamedArgs{
+		"id":     imageID,
+		"status": status,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute update image status query: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return errs.ErrImageNotFound
+	}
+
+	return nil
+}
+
 func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*Property, error) {
 	stmt := `
 		SELECT
-			id, title, sub_title, price, host_id, max_guests, images, created_at, updated_at
+			id, title, sub_title, price, host_id, max_guests, created_at, updated_at
 		FROM
 			properties
 	`
@@ -111,7 +156,7 @@ func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*Property
 func (pr *PropertyRepository) GetPropertyByID(ctx context.Context, propertyID string) (*PropertyDetailsRaw, error) {
 	stmt := `
 		SELECT
-			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, p.images, p.created_at, p.updated_at,
+			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, p.created_at, p.updated_at,
 			u.first_name AS host_name,
 			a.id AS address_id, a.country, a.state, a.pincode, a.city, a.area
 		FROM properties p
@@ -153,11 +198,6 @@ func (pr *PropertyRepository) UpdateProperty(ctx context.Context, propertyID str
 	if payload.SubTitle != nil {
 		setClauses = append(setClauses, "sub_title = @sub_title")
 		args["sub_title"] = *payload.SubTitle
-	}
-
-	if payload.Image != nil {
-		setClauses = append(setClauses, "image = @image")
-		args["image"] = *payload.Image
 	}
 
 	if payload.AddressID != nil {

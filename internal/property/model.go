@@ -32,10 +32,24 @@ type Property struct {
 	SubTitle  *string    `json:"subTitle" db:"sub_title"`
 	Price     *float64   `json:"price" db:"price"`
 	HostID    string     `json:"hostId" db:"host_id"`
+	AddressID *string    `json:"addressId" db:"address_id"`
 	MaxGuests *int       `json:"maxGuests" db:"max_guests"`
-	ImageURLs []string   `json:"imageUrls" db:"images"`
 	CreatedAt *time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt *time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type PropertyImages struct {
+	ID         string    `json:"id" db:"id"`
+	PropertyID string    `json:"propertyId" db:"property_id"`
+	Key        string    `json:"key" db:"key"`
+	Status     string    `json:"status" db:"status"`
+	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt  time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type uploadResult struct {
+	ImageID string
+	Err     error
 }
 
 type PropertyAvailabiliy struct {
@@ -72,6 +86,7 @@ type Address struct {
 }
 
 type PropertyWithAddress struct {
-	Property Property `json:"property"`
-	Address  Address  `json:"address"`
+	Property Property          `json:"property"`
+	Address  Address           `json:"address"`
+	Images   []*PropertyImages `json:"images"`
 }

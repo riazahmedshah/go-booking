@@ -16,7 +16,6 @@ type CreatePropertyPayload struct {
 	SubTitle  *string  `json:"subTitle" validate:"omitempty,max=1000"`
 	Price     *float64 `json:"price" validate:"required,min=0"`
 	MaxGuests *int     `json:"maxGuests" validate:"omitempty,min=1"`
-	ImageURLs []string `json:"imageUrls"`
 }
 
 type CreatePropertyAndAddressPayload struct {
@@ -32,8 +31,7 @@ func (p *CreatePropertyAndAddressPayload) Validate() error {
 // Bug: Review properly.
 type UpdatePropertyPayload struct {
 	SubTitle  *string `json:"subTitle" validate:"omitempty,max=1000"`
-	Image     *string `json:"image" validate:"omitempty"`
-	AddressID *int    `json:"addressId" validate:"omitempty"`
+	AddressID *string `json:"addressId" validate:"omitempty"`
 	MaxGuests *int    `json:"maxGuests" validate:"omitempty,min=1"`
 }
 
