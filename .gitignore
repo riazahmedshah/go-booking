@@ -56,3 +56,6 @@ tsconfig.tsbuildinfo
 .env
 .turbo
 .vscode
+
+# secrets
+stayz-secret.json

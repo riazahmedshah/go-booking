@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/riazahmedshah/go-booking/internal/errs"
+	"github.com/riazahmedshah/go-booking/internal/lib/gcs"
 	"github.com/riazahmedshah/go-booking/internal/server"
 )
 
@@ -20,12 +21,14 @@ const (
 type PropertyService struct {
 	server       *server.Server
 	propertyRepo *PropertyRepository
+	gcsClient    *gcs.GCSClient
 }
 
-func NewPropertyService(server *server.Server, propertyRepo *PropertyRepository) *PropertyService {
+func NewPropertyService(server *server.Server, propertyRepo *PropertyRepository, gcsClient *gcs.GCSClient) *PropertyService {
 	return &PropertyService{
 		server:       server,
 		propertyRepo: propertyRepo,
+		gcsClient:    gcsClient,
 	}
 }
 

@@ -17,6 +17,7 @@ type Config struct {
 	Integration IntegrationConfig `validate:"required"`
 	JWT         JWTConfig         `validate:"required"`
 	OAuth       OAuthConfig       `validate:"required"`
+	GCS         GCSConfig         `validate:"required"`
 }
 
 type ServerConfig struct {
@@ -51,6 +52,11 @@ type OAuthConfig struct {
 	GoogleClientID     string `validate:"required"`
 	GoogleClientSecret string `validate:"required"`
 	GoogleRedirectURL  string `validate:"required"`
+}
+
+type GCSConfig struct {
+	GoogleCredentialPath string `validate:"required"`
+	GCSBucketName        string `validate:"required"`
 }
 
 func getEnv(key, fallback string) string {
@@ -105,6 +111,10 @@ func LoadConfig() (*Config, error) {
 			GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 			GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 			GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+		},
+		GCS: GCSConfig{
+			GoogleCredentialPath: getEnv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+			GCSBucketName:        getEnv("GCS_BUCKET_NAME", ""),
 		},
 	}
 
