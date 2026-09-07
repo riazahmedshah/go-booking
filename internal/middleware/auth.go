@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"slices"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/riazahmedshah/go-booking/internal/server"
 	"github.com/riazahmedshah/go-booking/internal/user"
@@ -63,25 +63,10 @@ func (auth *AuthMiddleware) RequireRole(roles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			slog.Info("checking user role")
-			token, ok := c.Get("user").(*jwt.Token)
-			if !ok || token == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid token")
-			}
+			userRole := c.Get("userRole").(string)
 
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				return echo.NewHTTPError(http.StatusUnauthorized, "invalid token claims")
-			}
-
-			userRole, ok := claims["role"].(string)
-			if !ok {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing role in token claims")
-			}
-
-			for _, role := range roles {
-				if userRole == role {
-					return next(c)
-				}
+			if slices.Contains(roles, userRole) {
+				return next(c)
 			}
 
 			return echo.NewHTTPError(http.StatusForbidden, "you do not have the required permissions to access this resource")

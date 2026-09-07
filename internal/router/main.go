@@ -16,7 +16,7 @@ func NewRouter(s *server.Server, h *handler.Handler) *echo.Echo {
 
 	router.Use(Middleware.CORSWithConfig(Middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"}, // React/Vite/Next port
-		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.PATCH, echo.PUT, echo.DELETE, echo.OPTIONS},
 		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAuthorization},
 		AllowCredentials: true,
 	}))

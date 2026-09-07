@@ -13,5 +13,8 @@ func registerUserRoutes(r *echo.Group, h *handler.Handler, middlewares *middlewa
 	auth.POST("/register", h.UserHandler.CreateUser)
 	auth.POST("/login", h.UserHandler.Login)
 	auth.POST("/google", h.UserHandler.LoginWithGoogle)
-	auth.GET("/me", h.UserHandler.GetCurrentUser, middlewares.Auth.RequireAuth())
+	user := r.Group("/user")
+	user.Use(middlewares.Auth.RequireAuth())
+	user.GET("/me", h.UserHandler.GetCurrentUser)
+	user.PATCH("/role", h.UserHandler.UpdateRole)
 }

@@ -135,3 +135,21 @@ func (ur *UserRepository) GetUserEmail(ctx context.Context, userID string) (stri
 	return userEmail.Email, nil
 
 }
+
+func (ur *UserRepository) UpdateRole(ctx context.Context, userID string) error {
+	stmt := `
+		UPDATE users
+		SET role=@role
+		WHERE id=@userId
+	`
+	rows, err := ur.server.DB.Query(ctx, stmt, pgx.NamedArgs{
+		"userId": userID,
+		"role":   "host",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute update role query: %w", err)
+	}
+	defer rows.Close()
+
+	return nil
+}

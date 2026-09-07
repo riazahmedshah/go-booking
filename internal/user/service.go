@@ -237,6 +237,14 @@ func (us *UserService) LoginWithGoogle(ctx context.Context, code string) (string
 	return sessionId, nil
 }
 
+func (us *UserService) UpdateRole(ctx context.Context, userID string) error {
+	err := us.userRepo.UpdateRole(ctx, userID)
+	if err != nil {
+		return errs.New(http.StatusInternalServerError, "failed to update user role", err)
+	}
+	return nil
+}
+
 func CreateSession(ctx context.Context, client rueidis.Client, userID, role string) (string, error) {
 	sid := strings.ToLower(rand.Text())
 

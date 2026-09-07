@@ -146,3 +146,12 @@ func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, user)
 }
+
+func (uh *UserHandler) UpdateRole(c echo.Context) error {
+	userID := c.Get("userID").(string)
+	err := uh.userService.UpdateRole(c.Request().Context(), userID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, echo.Map{"message": "user role updated successfully"})
+}

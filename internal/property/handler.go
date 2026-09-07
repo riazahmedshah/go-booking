@@ -1,6 +1,7 @@
 package property
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -26,16 +27,36 @@ func (ph *PropertyHandler) CreateProperty(c echo.Context) error {
 	const maxPayloadSize = (20 << 20) + (10 << 10)
 	c.Request().Body = http.MaxBytesReader(c.Response().Writer, c.Request().Body, maxPayloadSize)
 
+	propertyJSON := c.FormValue("property")
+	if propertyJSON == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing property field")
+	}
+	if err := json.Unmarshal([]byte(propertyJSON), &payload.Property); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid property json")
+	}
+
+	addressJSON := c.FormValue("address")
+	if addressJSON == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing address field")
+	}
+	if err := json.Unmarshal([]byte(addressJSON), &payload.Address); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid address json")
+	}
+
+	// validating the payload
+	if err := c.Validate(&payload.Property); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&payload.Address); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
 	form, err := c.MultipartForm()
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "failed to parse multipart form")
 	}
 
 	files := form.File["images"]
-
-	if err := c.Bind(&payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
-	}
 
 	property, err := ph.propertyService.CreateProperty(c.Request().Context(), files, userID, &payload)
 	if err != nil {
