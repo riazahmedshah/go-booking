@@ -93,3 +93,13 @@ func (ph *PropertyHandler) GetPropertyAvailability(c echo.Context) error {
 
 	return c.JSON(200, availability)
 }
+
+func (ph *PropertyHandler) GetPropertiesByHostID(c echo.Context) error {
+	hostID := c.Get("userID").(string)
+	properties, err := ph.propertyService.GetPropertiesByHostID(c.Request().Context(), hostID)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(200, properties)
+}

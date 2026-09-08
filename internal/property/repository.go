@@ -132,12 +132,38 @@ func (pr *PropertyRepository) UpdateImageStatus(ctx context.Context, imageID str
 	return nil
 }
 
-func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*Property, error) {
+func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*PopulatedProperty, error) {
 	stmt := `
 		SELECT
-			id, title, sub_title, price, host_id, max_guests, created_at, updated_at
-		FROM
-			properties
+			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, 
+			CASE 
+				WHEN a.id IS NOT NULL THEN jsonb_build_object(
+					'id', a.id,
+					'country', a.country,
+					'state', a.state,
+					'pincode', a.pincode,
+					'city', a.city,
+					'area', a.area,
+					'propertyId', a.property_id
+				)
+				ELSE NULL
+		  END AS address,
+			COALESCE(
+			jsonb_agg(
+				jsonb_build_object(
+					'id', pi.id,
+					'key', pi.key,
+					'status', pi.status
+				)
+			) FILTER (WHERE pi.id IS NOT NULL),
+			'[]'::JSONB
+			) AS images,
+			p.created_at, p.updated_at
+		FROM properties p
+		INNER JOIN addresses a ON p.id = a.property_id
+		LEFT JOIN property_images pi ON p.id = pi.property_id
+		GROUP BY p.id, a.id
+		ORDER BY p.created_at DESC
 	`
 	rows, err := pr.server.DB.Query(ctx, stmt)
 	if err != nil {
@@ -145,7 +171,7 @@ func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*Property
 	}
 	defer rows.Close()
 
-	properties, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[Property])
+	properties, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[PopulatedProperty])
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect rows from table:properties: %w", err)
 	}
@@ -153,17 +179,48 @@ func (pr *PropertyRepository) GetAllProperties(ctx context.Context) ([]*Property
 	return properties, nil
 }
 
-func (pr *PropertyRepository) GetPropertyByID(ctx context.Context, propertyID string) (*PropertyDetailsRaw, error) {
+func (pr *PropertyRepository) GetPropertyByID(ctx context.Context, propertyID string) (*PopulatedPropertyWithHost, error) {
 	stmt := `
 		SELECT
-			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, p.created_at, p.updated_at,
-			u.first_name AS host_name,
-			a.id AS address_id, a.country, a.state, a.pincode, a.city, a.area
+			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, 
+			CASE
+				WHEN u.id IS NOT NULL THEN jsonb_build_object(
+					'id', u.id,
+					'name', u.first_name
+				)
+				ELSE NULL
+			END AS host,
+			CASE 
+				WHEN a.id IS NOT NULL THEN jsonb_build_object(
+					'id', a.id,
+					'country', a.country,
+					'state', a.state,
+					'pincode', a.pincode,
+					'city', a.city,
+					'area', a.area,
+					'propertyId', a.property_id
+				)
+				ELSE NULL
+		  END AS address,
+			COALESCE(
+			jsonb_agg(
+				jsonb_build_object(
+					'id', pi.id,
+					'key', pi.key,
+					'status', pi.status
+				)
+			) FILTER (WHERE pi.id IS NOT NULL),
+			'[]'::JSONB
+			) AS images,
+			p.created_at, p.updated_at
 		FROM properties p
 		INNER JOIN users u ON p.host_id = u.id
-		LEFT JOIN addresses a ON p.id = a.property_id
+		INNER JOIN addresses a ON p.id = a.property_id
+		LEFT JOIN property_images pi ON p.id = pi.property_id
 		WHERE p.id = @id
-		`
+		GROUP BY p.id, u.id, a.id
+		ORDER BY p.created_at DESC
+	`
 
 	rows, err := pr.server.DB.Query(ctx, stmt, pgx.NamedArgs{
 		"id": propertyID,
@@ -173,7 +230,7 @@ func (pr *PropertyRepository) GetPropertyByID(ctx context.Context, propertyID st
 		return nil, fmt.Errorf("failed to execute get property by id for property_id %v: %w", propertyID, err)
 	}
 
-	propertyItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[PropertyDetailsRaw])
+	propertyItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[PopulatedPropertyWithHost])
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -277,4 +334,74 @@ func (pr *PropertyRepository) GetPropertyAvailability(ctx context.Context, prope
 	}
 
 	return availability, nil
+}
+
+func (pr *PropertyRepository) GetHostListings(ctx context.Context, hostID string) ([]*PopulatedProperty, error) {
+	// stmt := `
+	// 	SELECT p.id, p.title, p.sub_title AS "subTitle", p.price, p.host_id AS "hostId", p.max_guests AS "maxGuests", p.created_at AS "createdAt", p.updated_at AS "updatedAt",
+	// 	COALESCE(
+	// 		json_agg(
+	// 			json_build_object(
+	// 				'id', pi.id,
+	// 				'key', pi.key,
+	// 				'status', pi.status
+	// 			)
+	// 		) FILTER (WHERE pi.id IS NOT NULL),
+	// 		'[]'
+	// 	) AS images
+	// 	FROM properties p
+	// 	LEFT JOIN property_images pi ON p.id = pi.property_id
+	// 	WHERE p.host_id = @host_id
+	// 	GROUP BY p.id
+	// 	ORDER BY p.created_at DESC
+	// `
+
+	stmt := `
+		SELECT
+			p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests, 
+			CASE 
+				WHEN a.id IS NOT NULL THEN jsonb_build_object(
+					'id', a.id,
+					'country', a.country,
+					'state', a.state,
+					'pincode', a.pincode,
+					'city', a.city,
+					'area', a.area,
+					'propertyId', a.property_id
+				)
+				ELSE NULL
+		  END AS address,
+			COALESCE(
+			jsonb_agg(
+				jsonb_build_object(
+					'id', pi.id,
+					'key', pi.key,
+					'status', pi.status
+				)
+			) FILTER (WHERE pi.id IS NOT NULL),
+			'[]'::JSONB
+			) AS images,
+			p.created_at, p.updated_at
+		FROM properties p
+		INNER JOIN addresses a ON p.id = a.property_id
+		LEFT JOIN property_images pi ON p.id = pi.property_id
+		WHERE p.host_id = @host_id
+		GROUP BY p.id, a.id
+		ORDER BY p.created_at DESC
+	`
+
+	rows, err := pr.server.DB.Query(ctx, stmt, pgx.NamedArgs{
+		"host_id": hostID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	listings, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[PopulatedProperty])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect row from table:properties for host_id=%s: %w", hostID, err)
+	}
+
+	return listings, nil
 }

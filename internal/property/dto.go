@@ -1,6 +1,10 @@
 package property
 
-import "github.com/go-playground/validator/v10"
+import (
+	"time"
+
+	"github.com/go-playground/validator/v10"
+)
 
 type CreateAddressPayload struct {
 	Country    string  `json:"country" validate:"required"`
@@ -40,11 +44,6 @@ func (p *UpdatePropertyPayload) Validate() error {
 	return validate.Struct(p)
 }
 
-type HostResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 type AddressResponse struct {
 	Country string  `json:"country"`
 	State   string  `json:"state"`
@@ -53,15 +52,56 @@ type AddressResponse struct {
 	Area    string  `json:"area"`
 }
 
-type PropertyDetailsResponse struct {
-	ID        string          `json:"id"`
-	Title     string          `json:"title"`
-	SubTitle  *string         `json:"subTitle"`
-	Price     float64         `json:"price"`
-	MaxGuests int             `json:"maxGuests"`
-	Images    []string        `json:"images"`
-	Host      HostResponse    `json:"host"`
-	Address   AddressResponse `json:"address"`
+// type PropertyDetailsResponse struct {
+// 	ID        string          `json:"id"`
+// 	Title     string          `json:"title"`
+// 	SubTitle  *string         `json:"subTitle"`
+// 	Price     float64         `json:"price"`
+// 	MaxGuests int             `json:"maxGuests"`
+// 	Images    []string        `json:"images"`
+// 	Host      HostResponse    `json:"host"`
+// 	Address   AddressResponse `json:"address"`
+// }
+
+// HostListingsResponse represents the response structure for a host's property listings.
+
+type PropertyImage struct {
+	ID     string  `json:"id" db:"id"`
+	Key    *string `json:"key" db:"key"`
+	Status *string `json:"status" db:"status"`
 }
 
-// TODO: other payloads...
+type PropertyAddress struct {
+	ID         string  `json:"id" db:"id"`
+	Country    string  `json:"country" db:"country"`
+	State      string  `json:"state" db:"state"`
+	Pincode    string  `json:"pincode" db:"pincode"`
+	City       *string `json:"city" db:"city"`
+	Area       string  `json:"area" db:"area"`
+	PropertyID string  `json:"propertyId" db:"property_id"`
+}
+
+type PopulatedProperty struct {
+	ID        string           `json:"id" db:"id"`
+	Title     string           `json:"title" db:"title"`
+	SubTitle  *string          `json:"subTitle" db:"sub_title"`
+	Price     *float64         `json:"price" db:"price"`
+	HostID    string           `json:"hostId" db:"host_id"`
+	MaxGuests int              `json:"maxGuests" db:"max_guests"`
+	Address   *PropertyAddress `json:"address" db:"address"`
+	Images    []PropertyImage  `json:"images" db:"images"`
+	CreatedAt time.Time        `json:"createdAt" db:"created_at"`
+	UpdatedAt time.Time        `json:"updatedAt" db:"updated_at"`
+}
+
+// populated property with host details.
+
+type Host struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type PopulatedPropertyWithHost struct {
+	PopulatedProperty
+	Host *Host `json:"host" db:"host"`
+}
