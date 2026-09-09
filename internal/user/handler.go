@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/go-booking/internal/lib/utils"
 	"github.com/riazahmedshah/go-booking/internal/server"
 )
 
@@ -36,7 +37,7 @@ func (uh *UserHandler) SendOTP(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, echo.Map{"message": "otp send successfully"})
+	return utils.Success(c, http.StatusOK, "otp send successfully", nil)
 }
 
 func (uh *UserHandler) VerifyOTP(c echo.Context) error {
@@ -55,10 +56,7 @@ func (uh *UserHandler) VerifyOTP(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{
-		"message": "success",
-		"data":    result,
-	})
+	return utils.Success(c, http.StatusOK, "otp verified successfully", result)
 }
 
 func (uh *UserHandler) CreateUser(c echo.Context) error {
@@ -82,7 +80,7 @@ func (uh *UserHandler) CreateUser(c echo.Context) error {
 
 	c.SetCookie(cookie)
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "user created successfully"})
+	return utils.Success(c, http.StatusCreated, "user created successfully", nil)
 }
 
 func (uh *UserHandler) Login(c echo.Context) error {
@@ -135,7 +133,7 @@ func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
-	return c.JSON(http.StatusOK, echo.Map{"message": "logged in with google successfully"})
+	return utils.Success(c, http.StatusOK, "logged in with google successfully", nil)
 }
 
 func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
@@ -144,7 +142,7 @@ func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, user)
+	return utils.Success(c, http.StatusOK, "current user fetched successfully", user)
 }
 
 func (uh *UserHandler) UpdateRole(c echo.Context) error {
@@ -153,5 +151,5 @@ func (uh *UserHandler) UpdateRole(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, echo.Map{"message": "user role updated successfully"})
+	return utils.Success(c, http.StatusOK, "user role updated successfully", nil)
 }

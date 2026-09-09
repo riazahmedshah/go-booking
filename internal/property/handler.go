@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/go-booking/internal/lib/utils"
 	"github.com/riazahmedshah/go-booking/internal/server"
 )
 
@@ -62,7 +63,7 @@ func (ph *PropertyHandler) CreateProperty(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(201, property)
+	return utils.Success(c, http.StatusCreated, "property created successfully", property)
 }
 
 func (ph *PropertyHandler) GetAllProperties(c echo.Context) error {
@@ -70,8 +71,7 @@ func (ph *PropertyHandler) GetAllProperties(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-
-	return c.JSON(200, properties)
+	return utils.Success(c, http.StatusOK, "properties fetched successfully", properties)
 }
 
 func (ph *PropertyHandler) GetPropertyById(c echo.Context) error {
@@ -81,7 +81,7 @@ func (ph *PropertyHandler) GetPropertyById(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, property)
+	return utils.Success(c, http.StatusOK, "property fetched successfully", property)
 }
 
 func (ph *PropertyHandler) GetPropertyAvailability(c echo.Context) error {
@@ -91,7 +91,7 @@ func (ph *PropertyHandler) GetPropertyAvailability(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, availability)
+	return utils.Success(c, http.StatusOK, "property availability fetched successfully", availability)
 }
 
 func (ph *PropertyHandler) GetPropertiesByHostID(c echo.Context) error {
@@ -101,5 +101,5 @@ func (ph *PropertyHandler) GetPropertiesByHostID(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, properties)
+	return utils.Success(c, http.StatusOK, "properties fetched successfully", properties)
 }

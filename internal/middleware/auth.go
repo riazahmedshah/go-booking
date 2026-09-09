@@ -2,11 +2,14 @@ package middleware
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"slices"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/rueidis"
+	"github.com/riazahmedshah/go-booking/internal/errs"
 	"github.com/riazahmedshah/go-booking/internal/server"
 	"github.com/riazahmedshah/go-booking/internal/user"
 )
@@ -29,11 +32,11 @@ func (auth *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			cookie, err := c.Cookie("sid")
 			if err != nil {
-				if err == http.ErrNoCookie {
-					slog.Error("cookie not found")
-					return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+				if errors.Is(err, http.ErrNoCookie) {
+					slog.Warn("request without session cookie", "path", c.Path())
+					return errs.ErrUnauthorized
 				}
-				return echo.NewHTTPError(http.StatusBadRequest, "bad request")
+				return errs.Internal("failed to read session cookie", "requireAuth.readCookie", err)
 			}
 
 			sessionID := cookie.Value
@@ -41,14 +44,17 @@ func (auth *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 			cmd := auth.server.RedisClient.B().Get().Key("session:" + sessionID).Build()
 			res, err := auth.server.RedisClient.Do(c.Request().Context(), cmd).AsBytes()
 			if err != nil {
-				slog.Error("error occurred while fetching session data", "error", err)
-				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+				// Redis nil = session expired/not found, ye "unauthorized" hai, "internal error" nahi
+				if rueidis.IsRedisNil(err) {
+					slog.Warn("session not found or expired", "path", c.Path())
+					return errs.ErrUnauthorized
+				}
+				return errs.Internal("failed to fetch session data", "requireAuth.redisGet", err)
 			}
 
 			var sessionData user.SessionData
 			if err := json.Unmarshal(res, &sessionData); err != nil {
-				slog.Error("error occurred while unmarshalling session data", "error", err)
-				return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+				return errs.Internal("failed to parse session data", "requireAuth.unmarshal", err)
 			}
 
 			c.Set(UserIDKey, sessionData.UserID)
@@ -62,14 +68,17 @@ func (auth *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 func (auth *AuthMiddleware) RequireRole(roles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			slog.Info("checking user role")
-			userRole := c.Get("userRole").(string)
+			userRole, ok := c.Get(RoleKey).(string)
+			if !ok {
+				return errs.Internal("role missing from context, RequireAuth may not have run", "requireRole.contextCheck", nil)
+			}
 
 			if slices.Contains(roles, userRole) {
 				return next(c)
 			}
 
-			return echo.NewHTTPError(http.StatusForbidden, "you do not have the required permissions to access this resource")
+			slog.Warn("forbidden access attempt", "role", userRole, "path", c.Path())
+			return errs.ErrForbidden
 		}
 	}
 }

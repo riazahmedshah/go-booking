@@ -139,6 +139,8 @@ func (us *UserService) Register(ctx context.Context, payload *CreateUserPayload)
 		}
 		return "", errs.Internal("server error register", "register.RedisGet", err)
 	}
+	payload.IsVerified = new(bool)
+	*payload.IsVerified = true
 	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
 	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
 		return "", errs.Internal("server error register get user", "register.GetUserByEmail", err)
