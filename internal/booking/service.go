@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/redis/rueidis"
@@ -33,7 +32,7 @@ func NewBookingService(server *server.Server, bookingRepo *BookingRepository, no
 	}
 }
 
-func (b *BookingService) CreateBooking(ctx context.Context, userID string, payload *CreateBookingPayload) (any, error) {
+func (b *BookingService) CreateBooking(ctx context.Context, userID string, payload *CreateBookingPayload) (string, error) {
 
 	// check for availability of the property for the given dates
 
@@ -60,13 +59,13 @@ func (b *BookingService) CreateBooking(ctx context.Context, userID string, paylo
 		heldByUserID, getErr := b.server.RedisClient.Do(ctx, valCmd).ToString()
 
 		if getErr == nil && heldByUserID == userID {
-			return nil, errs.ErrBookingInProgress
+			return "", errs.ErrBookingInProgress
 		}
-		return nil, errs.ErrPropertyHeld
+		return "", errs.ErrPropertyHeld
 	}
 
 	if err != nil && !rueidis.IsRedisNil(err) {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateBookingFailed, err)
+		return "", errs.Internal(msgCreateBookingFailed, "createBooking.redisSet", err)
 	}
 
 	detachedCtx := context.WithoutCancel(ctx)
@@ -74,17 +73,17 @@ func (b *BookingService) CreateBooking(ctx context.Context, userID string, paylo
 	booking, err := b.bookingRepo.CreateBooking(detachedCtx, userID, payload)
 	if err != nil {
 		_ = b.server.RedisClient.Do(detachedCtx, b.server.RedisClient.B().Del().Key(holdKey).Build())
-		return nil, errs.New(http.StatusInternalServerError, msgCreateBookingFailed, err)
+		return "", errs.Internal(msgCreateBookingFailed, "createBooking.create", err)
 	}
 
 	key, err := utils.GenerateIdempotencyKey()
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateBookingFailed, err)
+		return "", errs.Internal(msgCreateBookingFailed, "createBooking.generateIdempotencyKey", err)
 	}
 
 	idempotencyData, err := b.bookingRepo.CreateIdempotencyKey(detachedCtx, key, booking.ID)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateBookingFailed, err)
+		return "", errs.Internal(msgCreateBookingFailed, "createBooking.createIdempotencyKey", err)
 	}
 
 	return idempotencyData.Key, nil
@@ -95,34 +94,34 @@ func (b *BookingService) ConfirmBooking(ctx context.Context, key string, userID 
 
 	tx, err := b.server.DB.Begin(ctx)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.beginTx", err)
 	}
 	defer tx.Rollback(ctx)
 
 	idempotencyData, err := b.bookingRepo.GetIdempotencyKeyWithLock(ctx, tx, key)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.getIdempotencyKey", err)
 	}
 
 	if idempotencyData.IsFinalized {
-		return nil, errs.ErrDuplicateBooking
+		return nil, errs.ErrBookingAlreadyConfirmed
 	}
 
 	booking, err := b.bookingRepo.ConfirmBooking(ctx, tx, idempotencyData.BookingID)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.confirm", err)
 	}
 
 	if err := b.bookingRepo.FinalizeIdempotencyKey(ctx, tx, key); err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.finalize", err)
 	}
 
 	if err := b.bookingRepo.UpdatePropertyAvailability(ctx, tx, booking.PropertyID, booking.ID, booking.CheckIn, booking.CheckOut); err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.updatePropertyAvailability", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgBookingFailed, err)
+		return nil, errs.Internal(msgBookingFailed, "confirmBooking.commit", err)
 	}
 
 	if err := b.notification.EnqueueBookingCompletionTask(&notification.BookingCompletionTask{

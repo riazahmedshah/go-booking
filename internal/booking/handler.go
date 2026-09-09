@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/go-booking/internal/lib/utils"
 	"github.com/riazahmedshah/go-booking/internal/server"
 )
 
@@ -33,8 +34,7 @@ func (bh *BookingHandler) CreateBooking(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-
-	return c.JSON(201, map[string]string{"idempotency_key": idempotencyKey.(string)})
+	return utils.Success(c, 201, "Booking created successfully", idempotencyKey)
 }
 
 func (bh *BookingHandler) ConfirmBooking(c echo.Context) error {
@@ -47,5 +47,5 @@ func (bh *BookingHandler) ConfirmBooking(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(200, booking)
+	return utils.Success(c, 200, "Booking confirmed successfully", booking)
 }

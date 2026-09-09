@@ -68,24 +68,24 @@ func allowedMimeTypes(fileHeader *multipart.FileHeader) bool {
 
 func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipart.FileHeader, hostID string, payload *CreatePropertyAndAddressPayload) (*PropertyWithAddress, error) {
 	if len(files) > 4 {
-		return nil, errs.New(http.StatusBadRequest, "maximum 4 files allowed", nil)
+		return nil, errs.ErrLimitFilesExceeded
 	}
 
 	const maxFileSize = 5 << 20 // 5MB in bytes
 
 	for _, file := range files {
 		if !allowedMimeTypes(file) {
-			return nil, errs.New(http.StatusBadRequest, fmt.Sprintf("file %s has an invalid mime type", file.Filename), nil)
+			return nil, errs.ErrInvalidFileType
 		}
 		if file.Size > maxFileSize {
-			return nil, errs.New(http.StatusBadRequest, fmt.Sprintf("file %s exceeds 5MB limit", file.Filename), nil)
+			return nil, errs.ErrFileTooLarge
 		}
 
 	}
 
 	tx, err := ps.server.DB.Begin(ctx)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+		return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.beginTx", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -94,13 +94,13 @@ func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipar
 		if errors.Is(err, errs.ErrPropertyTitleExists) {
 			return nil, err
 		}
-		return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+		return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.create", err)
 	}
 
 	payload.Address.PropertyID = property.ID
 	address, err := ps.propertyRepo.CreateAddress(ctx, tx, &payload.Address)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+		return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.createAddress", err)
 	}
 
 	fileBytes := make([][]byte, 0, len(files))
@@ -114,22 +114,22 @@ func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipar
 
 		f, err := file.Open()
 		if err != nil {
-			return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.openFile", err)
 		}
 		data, err := io.ReadAll(f)
 		f.Close()
 		if err != nil {
-			return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.readFile", err)
 		}
 		fileBytes = append(fileBytes, data)
 	}
 	images, err := ps.propertyRepo.CreatePropertyImages(ctx, tx, property.ID, keys)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+		return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.createImages", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreatePropertyFailed, err)
+		return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.commitTx", err)
 	}
 
 	detachedCtx := context.WithoutCancel(ctx)
@@ -147,7 +147,7 @@ func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipar
 func (ps *PropertyService) GetAllProperties(ctx context.Context) ([]*PopulatedProperty, error) {
 	properties, err := ps.propertyRepo.GetAllProperties(ctx)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgGetAllPropertiesFailed, err)
+		return nil, errs.Internal(msgGetAllPropertiesFailed, "getAllProperties", err)
 	}
 
 	return properties, nil
@@ -156,7 +156,7 @@ func (ps *PropertyService) GetAllProperties(ctx context.Context) ([]*PopulatedPr
 func (ps *PropertyService) GetPropertiesByHostID(ctx context.Context, hostID string) ([]*PopulatedProperty, error) {
 	properties, err := ps.propertyRepo.GetHostListings(ctx, hostID)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgGetAllPropertiesFailed, err)
+		return nil, errs.Internal(msgGetAllPropertiesFailed, "getPropertiesByHostID", err)
 	}
 
 	return properties, nil
@@ -169,7 +169,7 @@ func (ps *PropertyService) GetPropertyByID(ctx context.Context, propertyID strin
 			return nil, err
 		}
 
-		return nil, errs.New(http.StatusInternalServerError, msgGetPropertyByIDFailed, err)
+		return nil, errs.Internal(msgGetPropertyByIDFailed, "getPropertyByID", err)
 	}
 
 	return property, nil
@@ -178,7 +178,7 @@ func (ps *PropertyService) GetPropertyByID(ctx context.Context, propertyID strin
 func (ps *PropertyService) GetPropertyAvailability(ctx context.Context, propertyID string) ([]MonthAvailability, error) {
 	rows, err := ps.propertyRepo.GetPropertyAvailability(ctx, propertyID)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgGetPropertyAvailabilityFailed, err)
+		return nil, errs.Internal(msgGetPropertyAvailabilityFailed, "getPropertyAvailability", err)
 	}
 
 	// Group by "Year-Month" using a Map

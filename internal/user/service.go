@@ -30,8 +30,8 @@ type UserService struct {
 }
 
 var (
-	msgCreateUserFailed = "failed to create user"
-	// msgLoginFailed          = "failed to login user"
+	msgCreateUserFailed     = "failed to create user"
+	msgLoginFailed          = "failed to login user"
 	msgGetCurrentUserFailed = "failed to get current user"
 	msgSendOTPFailed        = "failed to send otp"
 	msgVerifyOTPFailed      = "failed to verify"
@@ -43,206 +43,6 @@ func NewUserService(server *server.Server, ur *UserRepository, n *notification.N
 		userRepo:     ur,
 		notification: n,
 	}
-}
-
-func (us *UserService) SendOTP(ctx context.Context, email string) error {
-	max := big.NewInt(1000000)
-	otp, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		slog.Error("crypto/rand error")
-		errs.New(http.StatusInternalServerError, "server error", err)
-	}
-	// otp := 123456
-	if err := us.notification.HandleSendOTP(email, otp.Int64()); err != nil {
-		return errs.New(http.StatusInternalServerError, msgSendOTPFailed, err)
-	}
-
-	cmd := us.server.RedisClient.B().Set().Key(email).Value(otp.String()).Ex(5 * time.Minute).Build()
-	if err := us.server.RedisClient.Do(ctx, cmd).Error(); err != nil {
-		return errs.New(http.StatusInternalServerError, msgSendOTPFailed, err)
-	}
-	return nil
-}
-
-func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) (*VerifyOTPResult, error) {
-	cmd := us.server.RedisClient.B().Getdel().Key(email).Build()
-	otpStr, err := us.server.RedisClient.Do(ctx, cmd).ToString()
-	if err != nil {
-		if rueidis.IsRedisNil(err) {
-			return nil, errs.New(http.StatusBadRequest, "otp expired or invalid", err)
-		}
-		return nil, errs.New(http.StatusInternalServerError, "server error", err)
-	}
-
-	otpStored, err := strconv.ParseInt(otpStr, 10, 64)
-	if err != nil {
-		return nil, errs.New(http.StatusBadRequest, "invalid otp format stored", err)
-	}
-
-	if otpStored != otp {
-		return nil, errs.New(http.StatusBadRequest, "invalid otp", nil)
-	}
-
-	cmdSet := us.server.RedisClient.B().Set().Key("is_verified:" + email).Value("1").Ex(5 * time.Minute).Build()
-	if err := us.server.RedisClient.Do(ctx, cmdSet).Error(); err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
-	}
-
-	_, err = us.userRepo.GetUserByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			// user does not exists
-			return &VerifyOTPResult{
-				UserExists: false,
-				Email:      email,
-			}, nil
-		}
-		return nil, errs.New(http.StatusInternalServerError, msgVerifyOTPFailed, err)
-	}
-	// user exists
-	return &VerifyOTPResult{
-		UserExists: true,
-		Email:      email,
-	}, nil
-}
-
-func (us *UserService) Register(ctx context.Context, payload *CreateUserPayload) (string, error) {
-	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
-	err := us.server.RedisClient.Do(ctx, cmd).Error()
-	if err != nil {
-		if rueidis.IsRedisNil(err) {
-			return "", errs.New(http.StatusBadRequest, "please veryfy email first", err)
-		}
-		return "", errs.New(http.StatusInternalServerError, "server error register", err)
-	}
-	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
-	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
-		return "", errs.New(http.StatusInternalServerError, "server error register get user", err)
-	}
-
-	if exixtingUser != nil {
-		sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
-		if err != nil {
-			return "", errs.New(http.StatusInternalServerError, "server error session register", err)
-		}
-		return sessionId, nil
-	}
-
-	user, err := us.userRepo.CreateUser(ctx, payload)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
-	}
-
-	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, "server error session register", err)
-	}
-
-	return sessionId, nil
-}
-
-func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string, error) {
-
-	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
-	err := us.server.RedisClient.Do(ctx, cmd).Error()
-	if err != nil {
-		if rueidis.IsRedisNil(err) {
-			return "", errs.New(http.StatusBadRequest, "please veryfy email first", err)
-		}
-		return "", errs.New(http.StatusInternalServerError, "server error login", err)
-	}
-
-	// just key exists
-
-	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", errs.ErrUserNotFound
-		}
-
-		return "", errs.New(http.StatusInternalServerError, "kya error yaha se aa raha hai??", err)
-	}
-
-	sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, "server session login error", err)
-	}
-
-	return sessionId, nil
-}
-
-func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*ResponseUserDTO, error) {
-	user, err := us.userRepo.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgGetCurrentUserFailed, err)
-	}
-
-	return user, nil
-}
-
-func (us *UserService) LoginWithGoogle(ctx context.Context, code string) (string, error) {
-	data := url.Values{
-		"code":          {code},
-		"client_id":     {us.server.Config.OAuth.GoogleClientID},
-		"client_secret": {us.server.Config.OAuth.GoogleClientSecret},
-		"redirect_uri":  {us.server.Config.OAuth.GoogleRedirectURL},
-		"grant_type":    {"authorization_code"},
-	}
-
-	res, err := http.PostForm("https://oauth2.googleapis.com/token", data)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, "login with google post err", err)
-	}
-	defer res.Body.Close()
-
-	bodyBytes, _ := io.ReadAll(res.Body)
-
-	var tokenResp GoogleTokenResponse
-	if err := json.Unmarshal(bodyBytes, &tokenResp); err != nil {
-		return "", errs.New(http.StatusInternalServerError, "failed to parse token response", err)
-	}
-
-	payload, err := idtoken.Validate(ctx, tokenResp.IDToken, us.server.Config.OAuth.GoogleClientID)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, "failed to validate google id token", err)
-	}
-
-	firstName := payload.Claims["given_name"].(string)
-	lastName := payload.Claims["family_name"].(string)
-	email := payload.Claims["email"].(string)
-	isVerified := payload.Claims["email_verified"].(bool)
-
-	user, err := us.userRepo.GetUserByEmail(ctx, email)
-	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
-		return "", errs.New(http.StatusInternalServerError, "failed to get user by email", err)
-	}
-
-	if errors.Is(err, errs.ErrUserNotFound) {
-		userPayload := &CreateUserPayload{
-			FirstName:  firstName,
-			LastName:   &lastName,
-			Email:      email,
-			IsVerified: &isVerified,
-		}
-
-		user, err = us.userRepo.CreateUser(ctx, userPayload)
-		if err != nil {
-			return "", errs.New(http.StatusInternalServerError, "failed to create user from google login", err)
-		}
-	}
-	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
-	if err != nil {
-		return "", errs.New(http.StatusInternalServerError, "failed to create session for existing user", err)
-	}
-	return sessionId, nil
-}
-
-func (us *UserService) UpdateRole(ctx context.Context, userID string) error {
-	err := us.userRepo.UpdateRole(ctx, userID)
-	if err != nil {
-		return errs.New(http.StatusInternalServerError, "failed to update user role", err)
-	}
-	return nil
 }
 
 func CreateSession(ctx context.Context, client rueidis.Client, userID, role string) (string, error) {
@@ -267,4 +67,204 @@ func CreateSession(ctx context.Context, client rueidis.Client, userID, role stri
 	}
 
 	return sid, nil
+}
+
+func (us *UserService) SendOTP(ctx context.Context, email string) error {
+	max := big.NewInt(1000000)
+	otp, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		slog.Error("crypto/rand error")
+		errs.Internal("internal server error", "sendOTP.generateOTP", err)
+	}
+	// otp := 123456
+	if err := us.notification.HandleSendOTP(email, otp.Int64()); err != nil {
+		return errs.Internal(msgSendOTPFailed, "sendOTP.HandleSendOTP", err)
+	}
+
+	cmd := us.server.RedisClient.B().Set().Key(email).Value(otp.String()).Ex(5 * time.Minute).Build()
+	if err := us.server.RedisClient.Do(ctx, cmd).Error(); err != nil {
+		return errs.Internal(msgSendOTPFailed, "sendOTP.RedisSet", err)
+	}
+	return nil
+}
+
+func (us *UserService) VerifyOTP(ctx context.Context, email string, otp int64) (*VerifyOTPResult, error) {
+	cmd := us.server.RedisClient.B().Getdel().Key(email).Build()
+	otpStr, err := us.server.RedisClient.Do(ctx, cmd).ToString()
+	if err != nil {
+		if rueidis.IsRedisNil(err) {
+			return nil, errs.ErrInvalidOTP
+		}
+		return nil, errs.Internal("server error", "verifyOTP.RedisGet", err)
+	}
+
+	otpStored, err := strconv.ParseInt(otpStr, 10, 64)
+	if err != nil {
+		return nil, errs.ErrInvalidOTPFormat
+	}
+
+	if otpStored != otp {
+		return nil, errs.ErrInvalidOTP
+	}
+
+	cmdSet := us.server.RedisClient.B().Set().Key("is_verified:" + email).Value("1").Ex(5 * time.Minute).Build()
+	if err := us.server.RedisClient.Do(ctx, cmdSet).Error(); err != nil {
+		return nil, errs.Internal(msgVerifyOTPFailed, "verifyOTP.RedisSet", err)
+	}
+
+	_, err = us.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			// user does not exists
+			return &VerifyOTPResult{
+				UserExists: false,
+				Email:      email,
+			}, nil
+		}
+		return nil, errs.Internal(msgVerifyOTPFailed, "verifyOTP.GetUserByEmail", err)
+	}
+	// user exists
+	return &VerifyOTPResult{
+		UserExists: true,
+		Email:      email,
+	}, nil
+}
+
+func (us *UserService) Register(ctx context.Context, payload *CreateUserPayload) (string, error) {
+	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
+	err := us.server.RedisClient.Do(ctx, cmd).Error()
+	if err != nil {
+		if rueidis.IsRedisNil(err) {
+			return "", errs.ErrEmailNotVerified
+		}
+		return "", errs.Internal("server error register", "register.RedisGet", err)
+	}
+	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
+	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+		return "", errs.Internal("server error register get user", "register.GetUserByEmail", err)
+	}
+
+	if exixtingUser != nil {
+		sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
+		if err != nil {
+			return "", errs.Internal("server error session register", "register.CreateSession", err)
+		}
+		return sessionId, nil
+	}
+
+	user, err := us.userRepo.CreateUser(ctx, payload)
+	if err != nil {
+		return "", errs.Internal(msgCreateUserFailed, "register.CreateUser", err)
+	}
+
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
+	if err != nil {
+		return "", errs.Internal(msgCreateUserFailed, "register.CreateSession", err)
+	}
+
+	return sessionId, nil
+}
+
+func (us *UserService) Login(ctx context.Context, payload *LoginPayload) (string, error) {
+
+	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + payload.Email).Build()
+	err := us.server.RedisClient.Do(ctx, cmd).Error()
+	if err != nil {
+		if rueidis.IsRedisNil(err) {
+			return "", errs.ErrEmailNotVerified
+		}
+		return "", errs.Internal(msgLoginFailed, "login.RedisGet", err)
+	}
+
+	// just key exists
+
+	exixtingUser, err := us.userRepo.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", errs.ErrUserNotFound
+		}
+
+		return "", errs.Internal(msgLoginFailed, "login.GetUserByEmail", err)
+	}
+
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, exixtingUser.ID, exixtingUser.Role)
+	if err != nil {
+		return "", errs.Internal(msgLoginFailed, "login.CreateSession", err)
+	}
+
+	return sessionId, nil
+}
+
+func (us *UserService) GetCurrentUser(ctx context.Context, userID string) (*ResponseUserDTO, error) {
+	user, err := us.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, errs.Internal(msgGetCurrentUserFailed, "getCurrentUser.GetUserByID", err)
+	}
+
+	return user, nil
+}
+
+func (us *UserService) LoginWithGoogle(ctx context.Context, code string) (string, error) {
+	data := url.Values{
+		"code":          {code},
+		"client_id":     {us.server.Config.OAuth.GoogleClientID},
+		"client_secret": {us.server.Config.OAuth.GoogleClientSecret},
+		"redirect_uri":  {us.server.Config.OAuth.GoogleRedirectURL},
+		"grant_type":    {"authorization_code"},
+	}
+
+	res, err := http.PostForm("https://oauth2.googleapis.com/token", data)
+	if err != nil {
+		return "", errs.Internal("login with google post err", "loginWithGoogle.PostForm", err)
+	}
+	defer res.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(res.Body)
+
+	var tokenResp GoogleTokenResponse
+	if err := json.Unmarshal(bodyBytes, &tokenResp); err != nil {
+		return "", errs.Internal("failed to parse token response", "loginWithGoogle.Unmarshal", err)
+	}
+
+	payload, err := idtoken.Validate(ctx, tokenResp.IDToken, us.server.Config.OAuth.GoogleClientID)
+	if err != nil {
+		return "", errs.Internal("failed to validate google id token", "loginWithGoogle.Validate", err)
+	}
+
+	firstName := payload.Claims["given_name"].(string)
+	lastName := payload.Claims["family_name"].(string)
+	email := payload.Claims["email"].(string)
+	isVerified := payload.Claims["email_verified"].(bool)
+
+	user, err := us.userRepo.GetUserByEmail(ctx, email)
+	if err != nil && !errors.Is(err, errs.ErrUserNotFound) {
+		return "", errs.Internal("failed to get user by email", "loginWithGoogle.GetUserByEmail", err)
+	}
+
+	if errors.Is(err, errs.ErrUserNotFound) {
+		userPayload := &CreateUserPayload{
+			FirstName:  firstName,
+			LastName:   &lastName,
+			Email:      email,
+			IsVerified: &isVerified,
+		}
+
+		user, err = us.userRepo.CreateUser(ctx, userPayload)
+		if err != nil {
+			return "", errs.Internal("failed to create user from google login", "loginWithGoogle.CreateUser", err)
+		}
+	}
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, user.ID, user.Role)
+	if err != nil {
+		return "", errs.Internal("failed to create session for existing user", "loginWithGoogle.CreateSession", err)
+	}
+	return sessionId, nil
+}
+
+func (us *UserService) UpdateRole(ctx context.Context, userID string) error {
+	err := us.userRepo.UpdateRole(ctx, userID)
+	if err != nil {
+		return errs.Internal("failed to update user role", "updateRole.UpdateRole", err)
+	}
+	return nil
 }
