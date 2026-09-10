@@ -108,7 +108,7 @@ func (uh *UserHandler) Login(c echo.Context) error {
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
-	return c.JSON(http.StatusOK, echo.Map{"message": "logged in successful"})
+	return utils.Success(c, http.StatusOK, "logged in successfully", nil)
 }
 
 func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
