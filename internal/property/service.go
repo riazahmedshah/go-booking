@@ -117,7 +117,9 @@ func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipar
 			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.openFile", err)
 		}
 		data, err := io.ReadAll(f)
-		f.Close()
+		if cerr := f.Close(); cerr != nil {
+			slog.Info("failed to close file", "err", cerr)
+		}
 		if err != nil {
 			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.readFile", err)
 		}

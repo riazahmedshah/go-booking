@@ -54,8 +54,9 @@ func New(cfg *config.Config) (*Server, error) {
 
 func (s *Server) SetupHTTPServer(handler http.Handler) {
 	s.httpServer = &http.Server{
-		Addr:    ":" + s.Config.Server.Port,
-		Handler: handler,
+		Addr:        ":" + s.Config.Server.Port,
+		Handler:     handler,
+		ReadTimeout: 5 * time.Second,
 	}
 }
 
