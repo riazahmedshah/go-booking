@@ -117,7 +117,9 @@ func (ps *PropertyService) CreateProperty(ctx context.Context, files []*multipar
 			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.openFile", err)
 		}
 		data, err := io.ReadAll(f)
-		f.Close()
+		if cerr := f.Close(); cerr != nil {
+			slog.Info("failed to close file", "err", cerr)
+		}
 		if err != nil {
 			return nil, errs.Internal(msgCreatePropertyFailed, "createProperty.readFile", err)
 		}
@@ -184,7 +186,8 @@ func (ps *PropertyService) GetPropertyAvailability(ctx context.Context, property
 	// Group by "Year-Month" using a Map
 	// Key: "2026-08", Value: pointer to MonthAvailability
 	monthMap := make(map[string]*MonthAvailability)
-	var result []MonthAvailability
+	// var result []MonthAvailability
+	// var order []string // preserves first-seen order of "YYYY-MM" keys
 
 	for _, item := range rows {
 		y, m, _ := item.Date.Date()
@@ -197,10 +200,11 @@ func (ps *PropertyService) GetPropertyAvailability(ctx context.Context, property
 				Days:  []DayAvailability{},
 			}
 
-			result = append(result, MonthAvailability{
-				Month: int(m),
-				Year:  y,
-			})
+			// order = append(order, mapKey)
+			// result = append(result, MonthAvailability{
+			// 	Month: int(m),
+			// 	Year:  y,
+			// })
 		}
 
 		dayObj := DayAvailability{

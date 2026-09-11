@@ -70,5 +70,7 @@ func (n *NotificationService) Start() error {
 func (n *NotificationService) Stop() {
 	slog.Info("Shutting down background workers...")
 	n.asynqServer.Shutdown()
-	n.client.Close()
+	if err := n.client.Close(); err != nil {
+		slog.Error("failed to close notification client", "err", err)
+	}
 }

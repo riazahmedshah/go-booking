@@ -1,3 +1,5 @@
+![CI](https://github.com/riazahmedshah/go-booking/actions/workflows/ci.yaml/badge.svg)
+
 # Stayz - A booking platform inspired by Airbnb
 
 > A high-concurrency, transaction-safe RESTful backend engine for real-time property reservations & bookings built with `GoLang`, `PostgreSQL`, and `Redis`.
@@ -32,7 +34,7 @@
 |           ├── main.go     # API v1 router setup
 |           ├── user.go     # API v1 user routes
 |           ├── booking.go  # API v1 booking routes
-|           ├── propert.go  # API v1 property routes
+|           ├── property.go  # API v1 property routes
 |       ├── router.go       # Centralized echo router setup
 │   └── service/            # Centralized service layer (calls all service contructors)
 │   └── server/             # HTTP server setup, initilizes dependncies and inject & graceful shutdown
