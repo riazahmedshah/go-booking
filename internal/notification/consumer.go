@@ -3,8 +3,10 @@ package notification
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 	"github.com/riazahmedshah/go-booking/internal/config"
 	"github.com/riazahmedshah/go-booking/internal/lib/email"
 )
@@ -26,8 +28,19 @@ func NewNotificationService(cfg *config.Config) *NotificationService {
 		Password: cfg.Redis.Password,
 	})
 
+	redisOpt, err := redis.ParseURL(cfg.Redis.RedisURL)
+	if err != nil {
+		slog.Error("failed to parse redis URL for asynq", "error", err)
+		os.Exit(1)
+	}
+
 	server := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: cfg.Redis.Address, Password: cfg.Redis.Password, DB: 0},
+		asynq.RedisClientOpt{
+			Addr:      redisOpt.Addr,
+			Password:  redisOpt.Password,
+			DB:        redisOpt.DB,
+			TLSConfig: redisOpt.TLSConfig,
+		},
 		asynq.Config{
 			Concurrency: 10,
 		},

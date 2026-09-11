@@ -28,10 +28,12 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
-	redisClient, err := rueidis.NewClient(rueidis.ClientOption{
-		InitAddress: []string{cfg.Redis.Address},
-		Password:    cfg.Redis.Password,
-	})
+	opts, err := rueidis.ParseURL(cfg.Redis.RedisURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse redis URL: %w", err)
+	}
+	opts.DisableCache = true
+	redisClient, err := rueidis.NewClient(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Redis client: %w", err)
 	}

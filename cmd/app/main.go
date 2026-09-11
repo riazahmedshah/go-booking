@@ -24,7 +24,7 @@ func main() {
 	if err != nil {
 		panic("failed to load config: " + err.Error())
 	}
-
+	// slog.Info("config loaded successfully", "REDIS_URL", cfg.Redis.RedisURL)
 	srv, err := server.New(cfg)
 	if err != nil {
 		slog.Error("failed to create server", "error", err)

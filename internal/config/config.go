@@ -30,12 +30,14 @@ type DatabaseConfig struct {
 	User     string `validate:"required"`
 	Password string `validate:"required"`
 	Name     string `validate:"required"`
+	SSLMode  string `validate:"required,oneof=disable require"`
 }
 
 type RedisConfig struct {
 	Address  string `validate:"required"`
 	Password string `validate:"required"`
 	LockTTL  string `validate:"required"`
+	RedisURL string `validate:"required,url"`
 }
 
 type IntegrationConfig struct {
@@ -93,11 +95,13 @@ func LoadConfig() (*Config, error) {
 			User:     getEnv("DB_USER", ""),
 			Password: getEnv("DB_PASSWORD", ""),
 			Name:     getEnv("DB_NAME", ""),
+			SSLMode:  getEnv("SSL_MODE", "disable"),
 		},
 		Redis: RedisConfig{
 			Address:  getEnv("REDIS_ADDRESS", "localhost:6379"),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			LockTTL:  getEnv("LOCK_TTL", "60000"),
+			RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
 		},
 		Integration: IntegrationConfig{
 			ResendAPIKey: getEnv("INTEGRATION_RESEND_API_KEY", ""),
