@@ -187,7 +187,7 @@ func (ps *PropertyService) GetPropertyAvailability(ctx context.Context, property
 	// Key: "2026-08", Value: pointer to MonthAvailability
 	monthMap := make(map[string]*MonthAvailability)
 	// var result []MonthAvailability
-	var order []string // preserves first-seen order of "YYYY-MM" keys
+	// var order []string // preserves first-seen order of "YYYY-MM" keys
 
 	for _, item := range rows {
 		y, m, _ := item.Date.Date()
@@ -200,7 +200,7 @@ func (ps *PropertyService) GetPropertyAvailability(ctx context.Context, property
 				Days:  []DayAvailability{},
 			}
 
-			order = append(order, mapKey)
+			// order = append(order, mapKey)
 			// result = append(result, MonthAvailability{
 			// 	Month: int(m),
 			// 	Year:  y,

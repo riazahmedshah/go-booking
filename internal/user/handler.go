@@ -75,7 +75,7 @@ func (uh *UserHandler) CreateUser(c echo.Context) error {
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec
+	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
@@ -104,7 +104,7 @@ func (uh *UserHandler) Login(c echo.Context) error {
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec
+	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
@@ -129,7 +129,7 @@ func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec
+	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
