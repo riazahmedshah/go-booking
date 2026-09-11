@@ -60,3 +60,4 @@ tsconfig.tsbuildinfo
 
 # secrets
 stayz-secret.json
+bin/app
