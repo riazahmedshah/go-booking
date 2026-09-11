@@ -7,8 +7,8 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
-	"github.com/riazahmedshah/go-booking/internal/config"
-	"github.com/riazahmedshah/go-booking/internal/lib/email"
+	"github.com/riazahmedshah/stayz/internal/config"
+	"github.com/riazahmedshah/stayz/internal/lib/email"
 )
 
 type NotificationService struct {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/riazahmedshah/go-booking/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/errs"
 )
 
 func ErrMiddleware() echo.HTTPErrorHandler {

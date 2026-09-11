@@ -1,4 +1,4 @@
-module github.com/riazahmedshah/go-booking
+module github.com/riazahmedshah/stayz
 
 go 1.26.4
 

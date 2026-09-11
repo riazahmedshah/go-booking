@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/redis/rueidis"
-	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/lib/utils"
-	"github.com/riazahmedshah/go-booking/internal/notification"
-	"github.com/riazahmedshah/go-booking/internal/server"
+	"github.com/riazahmedshah/stayz/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/lib/utils"
+	"github.com/riazahmedshah/stayz/internal/notification"
+	"github.com/riazahmedshah/stayz/internal/server"
 )
 
 const (

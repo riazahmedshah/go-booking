@@ -8,8 +8,8 @@ import (
 	"log/slog"
 
 	"github.com/hibiken/asynq"
-	"github.com/riazahmedshah/go-booking/internal/config"
-	"github.com/riazahmedshah/go-booking/internal/lib/email"
+	"github.com/riazahmedshah/stayz/internal/config"
+	"github.com/riazahmedshah/stayz/internal/lib/email"
 )
 
 func (n *NotificationService) InitHandlers(config *config.Config) {

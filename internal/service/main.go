@@ -3,13 +3,13 @@ package service
 import (
 	"fmt"
 
-	"github.com/riazahmedshah/go-booking/internal/booking"
-	"github.com/riazahmedshah/go-booking/internal/lib/gcs"
-	"github.com/riazahmedshah/go-booking/internal/notification"
-	"github.com/riazahmedshah/go-booking/internal/property"
-	"github.com/riazahmedshah/go-booking/internal/repository"
-	"github.com/riazahmedshah/go-booking/internal/server"
-	"github.com/riazahmedshah/go-booking/internal/user"
+	"github.com/riazahmedshah/stayz/internal/booking"
+	"github.com/riazahmedshah/stayz/internal/lib/gcs"
+	"github.com/riazahmedshah/stayz/internal/notification"
+	"github.com/riazahmedshah/stayz/internal/property"
+	"github.com/riazahmedshah/stayz/internal/repository"
+	"github.com/riazahmedshah/stayz/internal/server"
+	"github.com/riazahmedshah/stayz/internal/user"
 )
 
 type Service struct {

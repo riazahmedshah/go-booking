@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/lib/gcs"
-	"github.com/riazahmedshah/go-booking/internal/server"
+	"github.com/riazahmedshah/stayz/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/lib/gcs"
+	"github.com/riazahmedshah/stayz/internal/server"
 )
 
 const (

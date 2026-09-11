@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"net/smtp"
 
-	"github.com/riazahmedshah/go-booking/internal/config"
+	"github.com/riazahmedshah/stayz/internal/config"
 )
 
 type SMTPClient struct {

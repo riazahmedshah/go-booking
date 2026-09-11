@@ -3,11 +3,11 @@ package router
 import (
 	"github.com/labstack/echo/v4"
 	Middleware "github.com/labstack/echo/v4/middleware"
-	"github.com/riazahmedshah/go-booking/internal/handler"
-	"github.com/riazahmedshah/go-booking/internal/middleware"
-	v1 "github.com/riazahmedshah/go-booking/internal/router/v1"
-	"github.com/riazahmedshah/go-booking/internal/server"
-	"github.com/riazahmedshah/go-booking/internal/validation"
+	"github.com/riazahmedshah/stayz/internal/handler"
+	"github.com/riazahmedshah/stayz/internal/middleware"
+	v1 "github.com/riazahmedshah/stayz/internal/router/v1"
+	"github.com/riazahmedshah/stayz/internal/server"
+	"github.com/riazahmedshah/stayz/internal/validation"
 )
 
 func NewRouter(s *server.Server, h *handler.Handler) *echo.Echo {

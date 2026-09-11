@@ -17,9 +17,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/rueidis"
-	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/notification"
-	"github.com/riazahmedshah/go-booking/internal/server"
+	"github.com/riazahmedshah/stayz/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/notification"
+	"github.com/riazahmedshah/stayz/internal/server"
 	"google.golang.org/api/idtoken"
 )
 

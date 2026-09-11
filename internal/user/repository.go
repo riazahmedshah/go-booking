@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/server"
+	"github.com/riazahmedshah/stayz/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/server"
 )
 
 type UserRepository struct {

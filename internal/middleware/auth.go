@@ -9,9 +9,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/redis/rueidis"
-	"github.com/riazahmedshah/go-booking/internal/errs"
-	"github.com/riazahmedshah/go-booking/internal/server"
-	"github.com/riazahmedshah/go-booking/internal/user"
+	"github.com/riazahmedshah/stayz/internal/errs"
+	"github.com/riazahmedshah/stayz/internal/server"
+	"github.com/riazahmedshah/stayz/internal/user"
 )
 
 const (

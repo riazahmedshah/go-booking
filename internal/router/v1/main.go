@@ -2,8 +2,8 @@ package v1
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/riazahmedshah/go-booking/internal/handler"
-	"github.com/riazahmedshah/go-booking/internal/middleware"
+	"github.com/riazahmedshah/stayz/internal/handler"
+	"github.com/riazahmedshah/stayz/internal/middleware"
 )
 
 func Registerv1Routes(router *echo.Group, h *handler.Handler, middlewares *middleware.Middlewares) {

@@ -6,7 +6,7 @@ package email
 // 	"html/template"
 
 // 	"github.com/resend/resend-go/v3"
-// 	"github.com/riazahmedshah/go-booking/internal/config"
+// 	"github.com/riazahmedshah/stayz/internal/config"
 // )
 
 // type Client struct {

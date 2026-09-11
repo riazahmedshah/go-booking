@@ -30,14 +30,14 @@ type DatabaseConfig struct {
 	User     string `validate:"required"`
 	Password string `validate:"required"`
 	Name     string `validate:"required"`
-	SSLMode  string `validate:"required,oneof=disable require"`
+	SSLMode  string `validate:"required"`
 }
 
 type RedisConfig struct {
 	Address  string `validate:"required"`
 	Password string `validate:"required"`
 	LockTTL  string `validate:"required"`
-	RedisURL string `validate:"required,url"`
+	RedisURL string `validate:"required"`
 }
 
 type IntegrationConfig struct {
@@ -80,8 +80,8 @@ func validateConfig(cnf *Config) error {
 
 func LoadConfig() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
-		slog.Error("No .env file found, using system environment variables")
-		os.Exit(1)
+		slog.Info("No .env file found, using system environment variables")
+		// os.Exit(1)
 	}
 
 	conf := &Config{

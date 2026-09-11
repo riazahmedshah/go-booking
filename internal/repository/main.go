@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"github.com/riazahmedshah/go-booking/internal/booking"
-	"github.com/riazahmedshah/go-booking/internal/property"
-	"github.com/riazahmedshah/go-booking/internal/server"
-	"github.com/riazahmedshah/go-booking/internal/user"
+	"github.com/riazahmedshah/stayz/internal/booking"
+	"github.com/riazahmedshah/stayz/internal/property"
+	"github.com/riazahmedshah/stayz/internal/server"
+	"github.com/riazahmedshah/stayz/internal/user"
 )
 
 type Repositories struct {

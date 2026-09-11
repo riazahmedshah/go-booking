@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riazahmedshah/go-booking/internal/config"
+	"github.com/riazahmedshah/stayz/internal/config"
 )
 
 var DB *pgxpool.Pool

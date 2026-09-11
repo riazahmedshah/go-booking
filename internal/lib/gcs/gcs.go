@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"cloud.google.com/go/storage"
-	"github.com/riazahmedshah/go-booking/internal/config"
+	"github.com/riazahmedshah/stayz/internal/config"
 	"google.golang.org/api/option"
 )
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/rueidis"
-	"github.com/riazahmedshah/go-booking/internal/config"
-	"github.com/riazahmedshah/go-booking/internal/database"
+	"github.com/riazahmedshah/stayz/internal/config"
+	"github.com/riazahmedshah/stayz/internal/database"
 )
 
 type Server struct {

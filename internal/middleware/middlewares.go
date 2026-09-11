@@ -1,6 +1,6 @@
 package middleware
 
-import "github.com/riazahmedshah/go-booking/internal/server"
+import "github.com/riazahmedshah/stayz/internal/server"
 
 type Middlewares struct {
 	Auth *AuthMiddleware

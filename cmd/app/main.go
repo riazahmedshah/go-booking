@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/riazahmedshah/go-booking/internal/config"
-	"github.com/riazahmedshah/go-booking/internal/handler"
-	"github.com/riazahmedshah/go-booking/internal/notification"
-	"github.com/riazahmedshah/go-booking/internal/repository"
-	"github.com/riazahmedshah/go-booking/internal/router"
-	"github.com/riazahmedshah/go-booking/internal/server"
-	"github.com/riazahmedshah/go-booking/internal/service"
+	"github.com/riazahmedshah/stayz/internal/config"
+	"github.com/riazahmedshah/stayz/internal/handler"
+	"github.com/riazahmedshah/stayz/internal/notification"
+	"github.com/riazahmedshah/stayz/internal/repository"
+	"github.com/riazahmedshah/stayz/internal/router"
+	"github.com/riazahmedshah/stayz/internal/server"
+	"github.com/riazahmedshah/stayz/internal/service"
 )
 
 func main() {
