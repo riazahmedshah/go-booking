@@ -69,13 +69,13 @@ func (uh *UserHandler) CreateUser(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie)
+	cookie := new(http.Cookie) // #nosec G124
 	cookie.Name = "sid"
 	cookie.Value = sid
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
+	cookie.Secure = uh.server.Config.Env == "production"
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
@@ -98,13 +98,13 @@ func (uh *UserHandler) Login(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie)
+	cookie := new(http.Cookie) // #nosec G124
 	cookie.Name = "sid"
 	cookie.Value = sid
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
+	cookie.Secure = uh.server.Config.Env == "production"
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
@@ -123,13 +123,13 @@ func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie)
+	cookie := new(http.Cookie) // #nosec G124
 	cookie.Name = "sid"
 	cookie.Value = sid
 	cookie.Expires = time.Now().Add(time.Hour * 24)
 	cookie.HttpOnly = true
 	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production" // #nosec G124
+	cookie.Secure = uh.server.Config.Env == "production"
 	cookie.Path = "/"
 
 	c.SetCookie(cookie)
