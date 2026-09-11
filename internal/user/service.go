@@ -263,10 +263,23 @@ func (us *UserService) LoginWithGoogle(ctx context.Context, code string) (string
 	return sessionId, nil
 }
 
-func (us *UserService) UpdateRole(ctx context.Context, userID string) error {
-	err := us.userRepo.UpdateRole(ctx, userID)
+func (us *UserService) UpdateRole(ctx context.Context, userID string) (string, error) {
+	cmd := us.server.RedisClient.B().Get().Key("is_verified:" + userID).Build()
+	err := us.server.RedisClient.Do(ctx, cmd).Error()
 	if err != nil {
-		return errs.Internal("failed to update user role", "updateRole.UpdateRole", err)
+		if rueidis.IsRedisNil(err) {
+			return "errs.ErrEmailNotVerified", nil
+		}
+		return "", errs.Internal("server error update role", "updateRole.RedisGet", err)
 	}
-	return nil
+	if err := us.userRepo.UpdateRole(ctx, userID); err != nil {
+		return "", errs.Internal("failed to update user role", "updateRole.UpdateRole", err)
+	}
+
+	sessionId, err := CreateSession(ctx, us.server.RedisClient, userID, "host")
+	if err != nil {
+		return "", errs.Internal("failed to create session for updated user", "updateRole.CreateSession", err)
+	}
+
+	return sessionId, nil
 }

@@ -69,16 +69,7 @@ func (uh *UserHandler) CreateUser(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie) // #nosec G124
-	cookie.Name = "sid"
-	cookie.Value = sid
-	cookie.Expires = time.Now().Add(time.Hour * 24)
-	cookie.HttpOnly = true
-	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production"
-	cookie.Path = "/"
-
-	c.SetCookie(cookie)
+	SetCookie(c, "sid", sid, uh.server.Config.Env == "production")
 
 	return utils.Success(c, http.StatusCreated, "user created successfully", nil)
 }
@@ -98,16 +89,7 @@ func (uh *UserHandler) Login(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie) // #nosec G124
-	cookie.Name = "sid"
-	cookie.Value = sid
-	cookie.Expires = time.Now().Add(time.Hour * 24)
-	cookie.HttpOnly = true
-	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production"
-	cookie.Path = "/"
-
-	c.SetCookie(cookie)
+	SetCookie(c, "sid", sid, uh.server.Config.Env == "production")
 	return utils.Success(c, http.StatusOK, "logged in successfully", nil)
 }
 
@@ -123,16 +105,7 @@ func (uh *UserHandler) LoginWithGoogle(c echo.Context) error {
 		return err
 	}
 
-	cookie := new(http.Cookie) // #nosec G124
-	cookie.Name = "sid"
-	cookie.Value = sid
-	cookie.Expires = time.Now().Add(time.Hour * 24)
-	cookie.HttpOnly = true
-	cookie.SameSite = http.SameSiteLaxMode
-	cookie.Secure = uh.server.Config.Env == "production"
-	cookie.Path = "/"
-
-	c.SetCookie(cookie)
+	SetCookie(c, "sid", sid, uh.server.Config.Env == "production")
 	return utils.Success(c, http.StatusOK, "logged in with google successfully", nil)
 }
 
@@ -147,9 +120,25 @@ func (uh *UserHandler) GetCurrentUser(c echo.Context) error {
 
 func (uh *UserHandler) UpdateRole(c echo.Context) error {
 	userID := c.Get("userID").(string)
-	err := uh.userService.UpdateRole(c.Request().Context(), userID)
+	sessionId, err := uh.userService.UpdateRole(c.Request().Context(), userID)
 	if err != nil {
 		return err
 	}
+
+	SetCookie(c, "sid", sessionId, uh.server.Config.Env == "production")
+
 	return utils.Success(c, http.StatusOK, "user role updated successfully", nil)
+}
+
+func SetCookie(c echo.Context, name, value string, secure bool) {
+	cookie := new(http.Cookie) // #nosec G124
+	cookie.Name = name
+	cookie.Value = value
+	cookie.Expires = time.Now().Add(time.Hour * 24)
+	cookie.HttpOnly = true
+	cookie.SameSite = http.SameSiteLaxMode
+	cookie.Secure = secure
+	cookie.Path = "/"
+
+	c.SetCookie(cookie)
 }
