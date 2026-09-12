@@ -58,7 +58,7 @@ func (s *Server) SetupHTTPServer(handler http.Handler) {
 	s.httpServer = &http.Server{
 		Addr:        ":" + s.Config.Server.Port,
 		Handler:     handler,
-		ReadTimeout: 5 * time.Second,
+		ReadTimeout: 14 * time.Second,
 	}
 }
 

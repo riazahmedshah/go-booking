@@ -23,16 +23,17 @@ type UserEmailFetcher interface {
 }
 
 func NewNotificationService(cfg *config.Config) *NotificationService {
-	client := asynq.NewClient(asynq.RedisClientOpt{
-		Addr:     cfg.Redis.Address,
-		Password: cfg.Redis.Password,
-	})
-
 	redisOpt, err := redis.ParseURL(cfg.Redis.RedisURL)
 	if err != nil {
 		slog.Error("failed to parse redis URL for asynq", "error", err)
 		os.Exit(1)
 	}
+	client := asynq.NewClient(asynq.RedisClientOpt{
+		Addr:      redisOpt.Addr,
+		Password:  redisOpt.Password,
+		DB:        redisOpt.DB,
+		TLSConfig: redisOpt.TLSConfig,
+	})
 
 	server := asynq.NewServer(
 		asynq.RedisClientOpt{

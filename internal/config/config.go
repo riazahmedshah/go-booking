@@ -15,7 +15,6 @@ type Config struct {
 	Database    DatabaseConfig    `validate:"required"`
 	Redis       RedisConfig       `validate:"required"`
 	Integration IntegrationConfig `validate:"required"`
-	JWT         JWTConfig         `validate:"required"`
 	OAuth       OAuthConfig       `validate:"required"`
 	GCS         GCSConfig         `validate:"required"`
 }
@@ -34,8 +33,8 @@ type DatabaseConfig struct {
 }
 
 type RedisConfig struct {
-	Address  string `validate:"required"`
-	Password string `validate:"required"`
+	// Address  string `validate:"required"`
+	// Password string `validate:"required"`
 	LockTTL  string `validate:"required"`
 	RedisURL string `validate:"required"`
 }
@@ -44,10 +43,6 @@ type IntegrationConfig struct {
 	SMTPHost     string `validate:"omitempty"`
 	SMTPPort     string `validate:"omitempty"`
 	ResendAPIKey string `validate:"omitempty"`
-}
-
-type JWTConfig struct {
-	SecretKey string `validate:"required"`
 }
 
 type OAuthConfig struct {
@@ -98,8 +93,8 @@ func LoadConfig() (*Config, error) {
 			SSLMode:  getEnv("SSL_MODE", "disable"),
 		},
 		Redis: RedisConfig{
-			Address:  getEnv("REDIS_ADDRESS", "localhost:6379"),
-			Password: getEnv("REDIS_PASSWORD", ""),
+			// Address:  getEnv("REDIS_ADDRESS", "localhost:6379"),
+			// Password: getEnv("REDIS_PASSWORD", ""),
 			LockTTL:  getEnv("LOCK_TTL", "60000"),
 			RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
 		},
@@ -107,9 +102,6 @@ func LoadConfig() (*Config, error) {
 			ResendAPIKey: getEnv("INTEGRATION_RESEND_API_KEY", ""),
 			SMTPHost:     getEnv("SMTP_HOST", "localhost"),
 			SMTPPort:     getEnv("SMTP_PORT", "1025"),
-		},
-		JWT: JWTConfig{
-			SecretKey: getEnv("JWT_SECRET_KEY", ""),
 		},
 		OAuth: OAuthConfig{
 			GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),

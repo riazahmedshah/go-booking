@@ -9,6 +9,9 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
 
+    env:
+      DB_DSN: ${{ secrets.DB_DSN }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -18,8 +21,8 @@ jobs:
         with:
           go-version: '1.26.4'
       
-      - name: Install Goose
-        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+      - name: Install tern
+        run: go install github.com/jackc/tern/v2@latest
 
       - name: Build app
         run: scripts/buildprod.sh
@@ -42,4 +45,10 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           gcloud builds submit --tag asia-southeast1-docker.pkg.dev/stayz-booking-9311/stayz-ar-repo/stayz:latest .
+      
+      # 5. Run Database Migrations
+      - name: Run Database Migrations
+        run: scripts/migrateup.sh
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
    
