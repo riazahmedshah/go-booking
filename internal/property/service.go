@@ -152,7 +152,22 @@ func (ps *PropertyService) GetAllProperties(ctx context.Context) ([]*PopulatedPr
 		return nil, errs.Internal(msgGetAllPropertiesFailed, "getAllProperties", err)
 	}
 
-	return properties, nil
+	filteredProperties := make([]*PopulatedProperty, 0, len(properties))
+	status := "active"
+	for _, property := range properties {
+		filteredPropertyImages := make([]PropertyImage, 0)
+		for _, img := range property.Images {
+			if *img.Status == status {
+				filteredPropertyImages = append(filteredPropertyImages, img)
+			}
+		}
+		if len(filteredPropertyImages) > 0 {
+			property.Images = filteredPropertyImages
+			filteredProperties = append(filteredProperties, property)
+		}
+	}
+
+	return filteredProperties, nil
 }
 
 func (ps *PropertyService) GetPropertiesByHostID(ctx context.Context, hostID string) ([]*PopulatedProperty, error) {
@@ -259,4 +274,28 @@ func processImageUploads(ctx context.Context, gcsClient *gcs.GCSClient, property
 			slog.Error("failed to update image status", "imageId", result.ImageID, "error", err)
 		}
 	}
+}
+
+func (ps *PropertyService) SearchProperties(ctx context.Context, searchPayload *SearchPropertyPayload) ([]*PopulatedProperty, error) {
+	properties, err := ps.propertyRepo.Search(ctx, searchPayload)
+	if err != nil {
+		return nil, errs.Internal("unexpected error occurred while searching properties", "searchProperties", err)
+	}
+
+	filteredProperties := make([]*PopulatedProperty, 0, len(properties))
+	status := "active"
+	for _, property := range properties {
+		filteredPropertyImages := make([]PropertyImage, 0)
+		for _, img := range property.Images {
+			if *img.Status == status {
+				filteredPropertyImages = append(filteredPropertyImages, img)
+			}
+		}
+		if len(filteredPropertyImages) > 0 {
+			property.Images = filteredPropertyImages
+			filteredProperties = append(filteredProperties, property)
+		}
+	}
+
+	return filteredProperties, nil
 }

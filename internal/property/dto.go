@@ -105,3 +105,9 @@ type PopulatedPropertyWithHost struct {
 	PopulatedProperty
 	Host *Host `json:"host" db:"host"`
 }
+
+type SearchPropertyPayload struct {
+	Location string `json:"location" validate:"required"`
+	CheckIn  string `json:"checkIn" validate:"required,datetime=2006-01-02"`
+	CheckOut string `json:"checkOut" validate:"required,datetime=2006-01-02,gtcsfield=CheckIn"`
+}

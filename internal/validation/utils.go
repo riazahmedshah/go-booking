@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/stayz/internal/errs"
 )
 
 type CustomValidator struct {
@@ -34,36 +34,36 @@ func (cv *CustomValidator) Validate(i any) error {
 		return nil
 	}
 
-	// Check if the error is a collection of validation errors
-	if castedErrors, ok := err.(validator.ValidationErrors); ok {
-		errorResponse := make(map[string]string)
-
-		for _, fieldErr := range castedErrors {
-			// fieldErr.Field() will now give you "firstName" instead of "FirstName"
-			fieldName := fieldErr.Field()
-
-			// Customize the message based on the tag that failed
-			switch fieldErr.Tag() {
-			case "required":
-				errorResponse[fieldName] = "This field is required"
-			case "email":
-				errorResponse[fieldName] = "Invalid email format"
-			case "max":
-				errorResponse[fieldName] = "Value exceeds maximum allowed length of " + fieldErr.Param()
-			case "oneof":
-				errorResponse[fieldName] = "Must be one of the following: " + fieldErr.Param()
-			default:
-				errorResponse[fieldName] = "Invalid value (failed " + fieldErr.Tag() + " restriction)"
-			}
-		}
-
-		// Return a structured 400 Bad Request
-		return echo.NewHTTPError(http.StatusBadRequest, map[string]any{
-			"message": "validation failed",
-			"errors":  errorResponse,
-		})
+	castedErrors, ok := err.(validator.ValidationErrors)
+	if !ok {
+		return errs.Internal("unexpected validation error", "validator.Validate", err)
 	}
 
-	// Fallback for any other unexpected errors
-	return echo.NewHTTPError(http.StatusInternalServerError, "internal server error")
+	var msgs []string
+	for _, fieldErr := range castedErrors {
+		fieldName := fieldErr.Field()
+
+		var message string
+		switch fieldErr.Tag() {
+		case "required":
+			message = "is required"
+		case "email":
+			message = "must be a valid email"
+		case "max":
+			message = "exceeds max length of " + fieldErr.Param()
+		case "oneof":
+			message = "must be one of: " + fieldErr.Param()
+		default:
+			message = "failed " + fieldErr.Tag() + " validation"
+		}
+
+		msgs = append(msgs, fieldName+" "+message)
+	}
+
+	return &errs.AppError{
+		StatusCode: http.StatusBadRequest,
+		Code:       errs.CodeValidationError,
+		Message:    strings.Join(msgs, "; "),
+		Op:         "validator.Validate",
+	}
 }

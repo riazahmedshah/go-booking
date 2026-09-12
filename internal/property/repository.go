@@ -405,3 +405,63 @@ func (pr *PropertyRepository) GetHostListings(ctx context.Context, hostID string
 
 	return listings, nil
 }
+
+func (pr *PropertyRepository) Search(ctx context.Context, searchPayload *SearchPropertyPayload) ([]*PopulatedProperty, error) {
+	stmt := `
+		SELECT
+    p.id, p.title, p.sub_title, p.price, p.host_id, p.max_guests,
+    CASE 
+        WHEN a.id IS NOT NULL THEN jsonb_build_object(
+            'id', a.id,
+            'country', a.country,
+            'state', a.state,
+            'pincode', a.pincode,
+            'city', a.city,
+            'area', a.area,
+            'propertyId', a.property_id
+        )
+        ELSE NULL
+    END AS address,
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', pi.id,
+                'key', pi.key,
+                'status', pi.status
+            )
+        ) FILTER (WHERE pi.id IS NOT NULL),
+        '[]'::JSONB
+    ) AS images,
+    p.created_at, p.updated_at
+		FROM properties p
+		INNER JOIN addresses a ON p.id = a.property_id
+		LEFT JOIN property_images pi ON p.id = pi.property_id
+		WHERE (a.state ILIKE '%' || @destination || '%' OR a.city ILIKE '%' || @destination || '%')
+			AND NOT EXISTS (
+					SELECT 1
+					FROM property_availability pa
+					WHERE pa.property_id = p.id
+						AND pa.date >= @checkIn
+						AND pa.date < @checkOut
+						AND pa.is_available = false
+			)
+		GROUP BY p.id, a.id
+		ORDER BY p.created_at DESC
+	`
+	rows, err := pr.server.DB.Query(ctx, stmt, pgx.NamedArgs{
+		"destination": searchPayload.Location,
+		"checkIn":     searchPayload.CheckIn,
+		"checkOut":    searchPayload.CheckOut,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute search query: %w", err)
+	}
+	defer rows.Close()
+
+	properties, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[PopulatedProperty])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect rows from table:properties: %w", err)
+	}
+
+	return properties, nil
+}

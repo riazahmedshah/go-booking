@@ -103,3 +103,21 @@ func (ph *PropertyHandler) GetPropertiesByHostID(c echo.Context) error {
 
 	return utils.Success(c, http.StatusOK, "properties fetched successfully", properties)
 }
+
+func (ph *PropertyHandler) SearchProperties(c echo.Context) error {
+	var payload SearchPropertyPayload
+	payload.Location = c.QueryParam("destination")
+	payload.CheckIn = c.QueryParam("checkIn")
+	payload.CheckOut = c.QueryParam("checkOut")
+
+	if err := c.Validate(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	properties, err := ph.propertyService.SearchProperties(c.Request().Context(), &payload)
+	if err != nil {
+		return err
+	}
+
+	return utils.Success(c, http.StatusOK, "search results fetched successfully", properties)
+}

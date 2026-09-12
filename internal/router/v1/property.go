@@ -10,6 +10,7 @@ func registerPropertyRoutes(r *echo.Group, h *handler.Handler, middlewares *midd
 	r.GET("/property", h.PropertyHandler.GetAllProperties)
 	r.GET("/property/:id", h.PropertyHandler.GetPropertyById)
 	r.GET("/property/:id/availability", h.PropertyHandler.GetPropertyAvailability)
+	r.GET("/property/search", h.PropertyHandler.SearchProperties)
 	property := r.Group("/property")
 	property.Use(middlewares.Auth.RequireAuth())
 	property.GET("/property/host/hostings", h.PropertyHandler.GetPropertiesByHostID)
