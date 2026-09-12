@@ -23,4 +23,23 @@ jobs:
 
       - name: Build app
         run: scripts/buildprod.sh
+
+       # 1. GCP Authenticate
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      # 2. for gcloud CLI setup
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v3'
+
+      # 3. for testing if gcloud is working
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
+      
+      # 4. Build and Push Docker Image
+      - name: Build and Push Docker Image
+        run: |
+          gcloud builds submit --tag asia-southeast1-docker.pkg.dev/stayz-booking-9311/stayz-ar-repo/stayz:latest .
    
