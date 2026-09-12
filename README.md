@@ -10,7 +10,8 @@
 * **Web Framework:** Echo v4
 * **Database:** PostgreSQL + Redis
 * **Database Migrations:** Tern
-* **Containerization:** Docker & Docker Compose - [TODO]
+* **Containerization:** Docker 
+* **Deployment:** GCP Cloud Run (Artifacts: Docker Image + Tern Migrations)
 
 ## 📁 Directory Structure
 
