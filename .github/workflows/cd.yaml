@@ -51,4 +51,8 @@ jobs:
         run: scripts/migrateup.sh
         env:
           DB_DSN: ${{ secrets.DB_DSN }}
+
+      # 6. Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: gcloud run deploy stayz --image asia-southeast1-docker.pkg.dev/stayz-booking-9311/stayz-ar-repo/stayz:latest --region asia-south2 --allow-unauthenticated --project stayz-booking-9311 --max-instances=4
    
