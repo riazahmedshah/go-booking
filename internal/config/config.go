@@ -20,7 +20,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port string `validate:"required,numeric"`
+	Port string `validate:"required"`
 }
 
 type DatabaseConfig struct {
@@ -52,7 +52,7 @@ type OAuthConfig struct {
 }
 
 type GCSConfig struct {
-	GoogleCredentialPath string `validate:"required"`
+	GoogleCredentialPath string `validate:"omitempty"`
 	GCSBucketName        string `validate:"required"`
 }
 
@@ -82,7 +82,7 @@ func LoadConfig() (*Config, error) {
 	conf := &Config{
 		Env: getEnv("ENV", "development"),
 		Server: ServerConfig{
-			Port: getEnv("PORT", "8001"),
+			Port: getEnv("PORT", "8000"),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
